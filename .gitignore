@@ -21,3 +21,10 @@ dev/
 
 # Results file
 results.tsv
+
+# Node/Vite generated files
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+.devserver-*

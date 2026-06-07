@@ -1,0 +1,25 @@
+project_id = "dhcm-finance-control-hub"
+
+[functions.ai-chat]
+verify_jwt = true
+
+[functions.ai-draft-email]
+verify_jwt = true
+
+[functions.ai-recommend-action]
+verify_jwt = true
+
+[functions.ai-summarize-customer]
+verify_jwt = true
+
+[functions.ai-analyze-ar]
+verify_jwt = true
+
+[functions.ai-analyze-import]
+verify_jwt = true
+
+[functions.ai-analyze-reconciliation]
+verify_jwt = true
+
+[functions.ai-generate-report-summary]
+verify_jwt = true
