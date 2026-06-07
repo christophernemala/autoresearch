@@ -23,3 +23,15 @@ verify_jwt = true
 
 [functions.ai-generate-report-summary]
 verify_jwt = true
+
+[functions.email-send-approved]
+verify_jwt = true
+
+[functions.export-workbook]
+verify_jwt = true
+
+[functions.oracle-sync]
+verify_jwt = true
+
+[functions.banking-reconciliation]
+verify_jwt = true

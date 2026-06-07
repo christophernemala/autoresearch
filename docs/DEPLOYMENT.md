@@ -28,8 +28,14 @@ Sensitive actions use Supabase Edge Functions first:
 - `ai-analyze-import`
 - `ai-analyze-reconciliation`
 - `ai-generate-report-summary`
+- `email-send-approved`
+- `export-workbook`
+- `oracle-sync`
+- `banking-reconciliation`
 
 Configure `OPENAI_API_KEY` as a Supabase secret only. Never expose it through Vite environment variables.
+
+Email, export, Oracle, and banking functions require an approval record before execution. Production provider credentials must be configured as Supabase secrets, not Vite variables.
 
 ## Required Checks
 
