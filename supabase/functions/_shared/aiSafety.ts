@@ -1,3 +1,5 @@
+import { promptForFunction } from './agentPrompts.ts';
+
 export type AgentFunctionName =
   | 'ai-chat'
   | 'ai-draft-email'
@@ -39,12 +41,15 @@ export async function safeAgentResponse(functionName: AgentFunctionName, request
   const payload = await request.json().catch(() => ({}));
   const pageContext = payload.pageContext ?? {};
   const userQuestion = payload.message ?? payload.prompt ?? '';
+  const prompt = promptForFunction(functionName);
 
   return json({
     functionName,
+    persona: prompt.persona,
     mode: 'approval_required',
     userQuestion,
     pageContext,
+    systemPromptPreview: prompt.systemPrompt,
     response: 'AI execution is backend-only. This function is wired as the secure boundary for OpenAI calls and returns draft output that must be approved before execution.',
     proposedAction: {
       status: 'draft',

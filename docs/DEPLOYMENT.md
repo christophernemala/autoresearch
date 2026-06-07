@@ -37,6 +37,8 @@ Configure `OPENAI_API_KEY` as a Supabase secret only. Never expose it through Vi
 
 Email, export, Oracle, and banking functions require an approval record before execution. Production provider credentials must be configured as Supabase secrets, not Vite variables.
 
+AI Edge Functions use backend prompt personas for AR finance analysis, collections, reconciliation, Oracle imports, Excel reporting, email drafting, and audit/compliance. These prompts live under `supabase/functions/_shared/agentPrompts.ts` so the frontend never owns the safety boundary.
+
 ## Required Checks
 
 Run after every phase:
