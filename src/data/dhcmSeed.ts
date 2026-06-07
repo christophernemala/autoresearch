@@ -1,4 +1,5 @@
 import type { AgentAction, BankTransaction, Customer, EntityAging, ImportValidationResult, Invoice } from '../types';
+import { validateOracleArColumns } from '../lib/oracleImport';
 
 export const entities: EntityAging[] = [
   { entity: 'DCM', totalAr: 820_000_000, current: 492_000_000, overdue: 328_000_000, critical90: 112_000_000, critical180: 54_000_000, dso: 58.4, cei: 84.2, eclProvision: 18_400_000 },
@@ -27,8 +28,53 @@ export const bankTransactions: BankTransaction[] = [
   { id: 'bank-003', bankAccount: 'ADCB Receipts AED', date: '2025-05-11', reference: 'UNALLOCATED BULK RECEIPT', customerHint: 'Unknown', amount: 2_900_000, status: 'unmatched', confidence: 31 }
 ];
 
+const oracleMayUploadedColumns = [
+  'Customer Number',
+  'Customer Name',
+  'Customer Vertical',
+  'Bill To Location',
+  'Site Use Name',
+  'Company Name',
+  'Receivable Account',
+  'Intercompany',
+  'Project',
+  'Profit Center',
+  'Contract Number',
+  'Reference',
+  'Transaction Source',
+  'Transaction Type',
+  'Transaction Number',
+  'Transaction Description',
+  'GL Date',
+  'Transaction Date',
+  'Due Date',
+  'Days Late',
+  'Original Invoice Amount',
+  'Applied Amount',
+  'Amount Due Remaining',
+  'Advertiser',
+  'PO Number',
+  'Sales Rep',
+  'Current',
+  '1-30 Days',
+  '31-60 Days',
+  '61-90 Days',
+  '91-180 Days',
+  '181-360 Days',
+  '361+ Days'
+];
+
 export const importResults: ImportValidationResult[] = [
-  { id: 'import-oracle-may', fileName: 'Oracle_AR_Aging_May_2025.xlsx', uploadedAt: '2025-05-12T08:00:00+04:00', status: 'review_required', missingColumns: ['Receivable Code Combination', 'Sub Account'], failedRows: 14, validRows: 1842, notes: ['7 rows contain invalid due dates', '4 rows have negative amount due remaining', '3 rows map to unknown entity codes'] }
+  {
+    id: 'import-oracle-may',
+    fileName: 'Oracle_AR_Aging_May_2025.xlsx',
+    uploadedAt: '2025-05-12T08:00:00+04:00',
+    status: 'review_required',
+    missingColumns: validateOracleArColumns(oracleMayUploadedColumns),
+    failedRows: 14,
+    validRows: 1842,
+    notes: ['7 rows contain invalid due dates', '4 rows have negative amount due remaining', '3 rows map to unknown entity codes']
+  }
 ];
 
 export const agentActions: AgentAction[] = [

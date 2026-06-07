@@ -17,6 +17,7 @@ import {
   Users
 } from 'lucide-react';
 import { createRouteContext, shouldShowAgentWidget } from './lib/agent';
+import { ORACLE_AGING_BUCKET_COLUMNS, ORACLE_AR_REQUIRED_COLUMNS } from './lib/oracleImport';
 import { requireSupabaseSetup, supabaseConfigured } from './lib/supabaseClient';
 import { agentActions, bankTransactions, customers, entities, formatAed, importResults, invoices } from './data/dhcmSeed';
 import type { AgentAction, AgentContext, EntityAging } from './types';
@@ -351,7 +352,15 @@ function ImportsPage({ workflow }: { workflow: (title: string, body: string, act
         </div>
         <ul className="issue-list">{result.notes.map((note) => <li key={note}>{note}</li>)}</ul>
       </section>
-      <section className="panel"><PanelHead title="Missing required columns" />{result.missingColumns.map((column) => <span className="chip" key={column}>{column}</span>)}</section>
+      <section className="panel">
+        <PanelHead title="Required Oracle column contract" />
+        <p className="muted-copy">{ORACLE_AR_REQUIRED_COLUMNS.length} required fields. {result.missingColumns.length} missing in latest seed validation.</p>
+        <div className="sheet-grid">{result.missingColumns.map((column) => <span className="chip" key={column}>{column}</span>)}</div>
+      </section>
+      <section className="panel span-3">
+        <PanelHead title="Aging bucket mapping" action="Create mapping review" onClick={() => workflow('Oracle aging bucket mapping', 'Creates a reviewable mapping record for Oracle aging bucket columns before imported rows are accepted.', 'Create mapping review')} />
+        <div className="sheet-grid">{ORACLE_AGING_BUCKET_COLUMNS.map((column) => <span className="chip" key={column}>{column}</span>)}</div>
+      </section>
     </main>
   );
 }

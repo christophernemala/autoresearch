@@ -570,6 +570,11 @@ tbody tr {
   color: #ffcf70;
 }
 
+.muted-copy {
+  color: #a9b8cf;
+  line-height: 1.5;
+}
+
 .agent-command {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) 360px;
