@@ -20,7 +20,7 @@ import { createRouteContext, shouldShowAgentWidget } from './lib/agent';
 import { ORACLE_AGING_BUCKET_COLUMNS, ORACLE_AR_REQUIRED_COLUMNS } from './lib/oracleImport';
 import { requireSupabaseSetup, supabaseConfigured } from './lib/supabaseClient';
 import { agentActions, bankTransactions, customers, entities, formatAed, importResults, invoices } from './data/dhcmSeed';
-import type { AgentAction, AgentContext, EntityAging } from './types';
+import type { AgentAction, AgentContext, EntityAging, Role, UserSession } from './types';
 
 type ModalState = {
   title: string;
@@ -54,6 +54,7 @@ export function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [search, setSearch] = useState(window.location.search);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(loadUserSession);
   const [reviewableActions, setReviewableActions] = useState<AgentAction[]>(loadReviewableActions);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(loadAuditEvents);
   const agentContext = useMemo(() => createRouteContext(path, search), [path, search]);
@@ -98,6 +99,43 @@ export function App() {
     setModal(null);
   };
 
+  const startLocalSession = (email: string, role: Role) => {
+    const session: UserSession = {
+      id: `local-user-${Date.now()}`,
+      email,
+      fullName: email.split('@')[0] || 'Finance User',
+      role,
+      source: supabaseConfigured ? 'supabase' : 'local_review'
+    };
+    const auditEvent: AuditEvent = {
+      id: `audit-${Date.now()}`,
+      action: 'login',
+      details: `${session.email} started a ${session.source === 'local_review' ? 'local review' : 'Supabase'} session as ${session.role}.`,
+      createdAt: new Date().toISOString()
+    };
+    const nextAudit = [auditEvent, ...auditEvents].slice(0, 20);
+    setCurrentUser(session);
+    setAuditEvents(nextAudit);
+    localStorage.setItem('dhcm.userSession', JSON.stringify(session));
+    localStorage.setItem('dhcm.auditEvents', JSON.stringify(nextAudit));
+    navigate('/app/dashboard');
+  };
+
+  const logout = () => {
+    const auditEvent: AuditEvent = {
+      id: `audit-${Date.now()}`,
+      action: 'logout',
+      details: `${currentUser?.email || 'Unknown user'} ended the session.`,
+      createdAt: new Date().toISOString()
+    };
+    const nextAudit = [auditEvent, ...auditEvents].slice(0, 20);
+    setCurrentUser(null);
+    setAuditEvents(nextAudit);
+    localStorage.removeItem('dhcm.userSession');
+    localStorage.setItem('dhcm.auditEvents', JSON.stringify(nextAudit));
+    navigate('/login');
+  };
+
   const page = renderRoute(path, navigate, workflow, agentContext, reviewableActions, auditEvents);
   const isAuth = ['/login', '/signup', '/forgot-password'].includes(path);
   const isLanding = path === '/';
@@ -107,9 +145,11 @@ export function App() {
       {isLanding ? (
         <LandingPage navigate={navigate} />
       ) : isAuth ? (
-        <AuthPage path={path} navigate={navigate} workflow={workflow} />
+        <AuthPage path={path} navigate={navigate} workflow={workflow} onAuth={startLocalSession} />
+      ) : !currentUser ? (
+        <ProtectedGate navigate={navigate} workflow={workflow} />
       ) : (
-        <AppLayout path={path} navigate={navigate}>
+        <AppLayout path={path} navigate={navigate} user={currentUser} onLogout={logout}>
           {page}
           {shouldShowAgentWidget(path) ? <FloatingAgent context={agentContext} workflow={workflow} /> : null}
         </AppLayout>
@@ -171,7 +211,7 @@ function LandingPage({ navigate }: { navigate: (path: string) => void }) {
   );
 }
 
-function AppLayout({ path, navigate, children }: { path: string; navigate: (path: string) => void; children: React.ReactNode }) {
+function AppLayout({ path, navigate, user, onLogout, children }: { path: string; navigate: (path: string) => void; user: UserSession; onLogout: () => void; children: React.ReactNode }) {
   return (
     <div className="console">
       <aside className="sidebar">
@@ -195,8 +235,9 @@ function AppLayout({ path, navigate, children }: { path: string; navigate: (path
           </div>
           <div className="top-actions">
             <span className={supabaseConfigured ? 'status ok' : 'status warn'}>{supabaseConfigured ? 'Supabase connected' : 'Setup required'}</span>
+            <span className="status role">{user.role}</span>
             <button className="secondary" onClick={() => window.history.back()}>Back</button>
-            <button className="ghost"><LogOut size={16} /> Logout</button>
+            <button className="ghost" onClick={onLogout}><LogOut size={16} /> Logout</button>
           </div>
         </header>
         {children}
@@ -232,8 +273,10 @@ function renderRoute(
   return <DashboardPage navigate={navigate} workflow={workflow} reviewableActions={reviewableActions} />;
 }
 
-function AuthPage({ path, navigate, workflow }: { path: string; navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void }) {
+function AuthPage({ path, navigate, workflow, onAuth }: { path: string; navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void; onAuth: (email: string, role: Role) => void }) {
   const title = path === '/signup' ? 'Create your DHCM account' : path === '/forgot-password' ? 'Reset password' : 'Sign in';
+  const [email, setEmail] = useState('finance@dhcm.example');
+  const [role, setRole] = useState<Role>('Finance User');
   return (
     <main className="auth-page">
       <section className="auth-panel">
@@ -241,14 +284,41 @@ function AuthPage({ path, navigate, workflow }: { path: string; navigate: (path:
           <span className="brand-mark">D</span><span><strong>DHCM</strong><small>Finance Control Hub</small></span>
         </button>
         <h1>{title}</h1>
-        <label>Email<input type="email" placeholder="finance@dhcm.example" /></label>
+        <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="finance@dhcm.example" /></label>
         {path !== '/forgot-password' ? <label>Password<input type="password" placeholder="Password" /></label> : null}
-        <button className="primary" onClick={() => workflow('Supabase Auth action', requireSupabaseSetup(title).body, title)}>{title}</button>
+        {path !== '/forgot-password' ? (
+          <label>
+            Role
+            <select value={role} onChange={(event) => setRole(event.target.value as Role)}>
+              <option>Admin</option>
+              <option>Finance User</option>
+              <option>Viewer</option>
+            </select>
+          </label>
+        ) : null}
+        <button className="primary" onClick={() => path === '/forgot-password' ? workflow('Supabase Auth action', requireSupabaseSetup(title).body, title) : onAuth(email, role)}>{title}</button>
         <div className="auth-links">
           <button onClick={() => navigate('/login')}>Login</button>
           <button onClick={() => navigate('/signup')}>Signup</button>
           <button onClick={() => navigate('/forgot-password')}>Forgot password</button>
         </div>
+      </section>
+    </main>
+  );
+}
+
+function ProtectedGate({ navigate, workflow }: { navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void }) {
+  return (
+    <main className="auth-page">
+      <section className="auth-panel protected-gate">
+        <button className="brand-button" onClick={() => navigate('/')}>
+          <span className="brand-mark">D</span><span><strong>DHCM</strong><small>Finance Control Hub</small></span>
+        </button>
+        <Lock size={34} />
+        <h1>Protected finance workspace</h1>
+        <p>Sign in to open the DHCM app. Until Supabase Auth is connected, login starts a local review session and records an audit event.</p>
+        <button className="primary" onClick={() => navigate('/login')}>Sign in</button>
+        <button className="secondary" onClick={() => workflow('Supabase Auth setup', requireSupabaseSetup('Protected routes').body, 'Show setup requirement')}>View setup requirement</button>
       </section>
     </main>
   );
@@ -574,6 +644,10 @@ function loadReviewableActions() {
 
 function loadAuditEvents() {
   return loadJson<AuditEvent[]>('dhcm.auditEvents', []);
+}
+
+function loadUserSession() {
+  return loadJson<UserSession | null>('dhcm.userSession', null);
 }
 
 function loadJson<T>(key: string, fallback: T) {

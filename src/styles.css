@@ -691,13 +691,32 @@ tbody tr {
   color: #c8d4e6;
 }
 
-.auth-panel input {
+.auth-panel input,
+.auth-panel select {
   min-height: 44px;
   border: 1px solid rgba(143, 160, 186, 0.28);
   border-radius: 8px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+}
+
+.auth-panel select option {
+  color: #0f1b2f;
+}
+
+.protected-gate svg {
+  color: #24c1c9;
+}
+
+.protected-gate p {
+  color: #c8d4e6;
+  line-height: 1.55;
+}
+
+.status.role {
+  background: rgba(36, 193, 201, 0.12);
+  color: #80f4ff;
 }
 
 .auth-links {

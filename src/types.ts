@@ -1,5 +1,13 @@
 export type Role = 'Admin' | 'Finance User' | 'Viewer';
 
+export interface UserSession {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+  source: 'local_review' | 'supabase';
+}
+
 export type AgingBucket =
   | 'Current'
   | '1-30'
