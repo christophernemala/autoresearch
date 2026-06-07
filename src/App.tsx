@@ -27,6 +27,13 @@ type ModalState = {
   action?: string;
 };
 
+type AuditEvent = {
+  id: string;
+  action: string;
+  details: string;
+  createdAt: string;
+};
+
 const appRoutes = [
   ['Dashboard', '/app/dashboard', Activity],
   ['AR Control', '/ar', CircleDollarSign],
@@ -46,6 +53,8 @@ export function App() {
   const [path, setPath] = useState(window.location.pathname);
   const [search, setSearch] = useState(window.location.search);
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [reviewableActions, setReviewableActions] = useState<AgentAction[]>(loadReviewableActions);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(loadAuditEvents);
   const agentContext = useMemo(() => createRouteContext(path, search), [path, search]);
 
   function navigate(nextPath: string) {
@@ -63,7 +72,32 @@ export function App() {
     setModal({ title, body, action });
   };
 
-  const page = renderRoute(path, navigate, workflow, agentContext);
+  const createReviewableRecord = (request: ModalState) => {
+    const now = new Date().toISOString();
+    const record: AgentAction = {
+      id: `local-${Date.now()}`,
+      title: request.title,
+      description: request.body,
+      status: 'pending_approval',
+      riskLevel: inferRisk(request.title),
+      createdAt: now
+    };
+    const auditEvent: AuditEvent = {
+      id: `audit-${Date.now()}`,
+      action: 'reviewable_record_created',
+      details: `${request.title} queued through safe approval workflow.`,
+      createdAt: now
+    };
+    const nextActions = [record, ...reviewableActions].slice(0, 12);
+    const nextAudit = [auditEvent, ...auditEvents].slice(0, 20);
+    setReviewableActions(nextActions);
+    setAuditEvents(nextAudit);
+    localStorage.setItem('dhcm.reviewableActions', JSON.stringify(nextActions));
+    localStorage.setItem('dhcm.auditEvents', JSON.stringify(nextAudit));
+    setModal(null);
+  };
+
+  const page = renderRoute(path, navigate, workflow, agentContext, reviewableActions, auditEvents);
   const isAuth = ['/login', '/signup', '/forgot-password'].includes(path);
   const isLanding = path === '/';
 
@@ -79,7 +113,7 @@ export function App() {
           {shouldShowAgentWidget(path) ? <FloatingAgent context={agentContext} workflow={workflow} /> : null}
         </AppLayout>
       )}
-      {modal ? <WorkflowModal modal={modal} onClose={() => setModal(null)} /> : null}
+      {modal ? <WorkflowModal modal={modal} onClose={() => setModal(null)} onConfirm={() => createReviewableRecord(modal)} /> : null}
     </div>
   );
 }
@@ -170,24 +204,31 @@ function AppLayout({ path, navigate, children }: { path: string; navigate: (path
   );
 }
 
-function renderRoute(path: string, navigate: (path: string) => void, workflow: (title: string, body: string, action?: string) => void, context: AgentContext) {
-  if (path === '/app/dashboard') return <DashboardPage navigate={navigate} workflow={workflow} />;
+function renderRoute(
+  path: string,
+  navigate: (path: string) => void,
+  workflow: (title: string, body: string, action?: string) => void,
+  context: AgentContext,
+  reviewableActions: AgentAction[],
+  auditEvents: AuditEvent[]
+) {
+  if (path === '/app/dashboard') return <DashboardPage navigate={navigate} workflow={workflow} reviewableActions={reviewableActions} />;
   if (path === '/ar') return <ArPage workflow={workflow} />;
   if (path === '/app/customers') return <CustomersPage navigate={navigate} workflow={workflow} />;
   if (path.startsWith('/app/customers/')) {
     const segments = path.split('/');
-    return <CustomerWorkspace customerId={segments[segments.length - 1] || ''} workflow={workflow} />;
+    return <CustomerWorkspace customerId={segments[segments.length - 1] || ''} workflow={workflow} auditEvents={auditEvents} />;
   }
   if (path === '/app/imports' || path === '/app/integrations/oracle-fusion') return <ImportsPage workflow={workflow} />;
   if (path === '/app/banking') return <BankingPage workflow={workflow} />;
   if (path === '/app/reconciliation') return <ReconciliationPage workflow={workflow} />;
-  if (path === '/app/agent') return <AgentCommandCenter context={context} workflow={workflow} />;
+  if (path === '/app/agent') return <AgentCommandCenter context={context} workflow={workflow} reviewableActions={reviewableActions} auditEvents={auditEvents} />;
   if (path === '/app/exports') return <ExportsPage workflow={workflow} />;
   if (path === '/app/reports') return <ReportsPage workflow={workflow} />;
   if (path === '/app/emails') return <EmailsPage workflow={workflow} />;
   if (path === '/app/settings' || path === '/app/mcp-tools' || path === '/app/admin/diagnostics') return <SettingsPage path={path} workflow={workflow} />;
-  if (path === '/app/audit') return <AuditPage />;
-  return <DashboardPage navigate={navigate} workflow={workflow} />;
+  if (path === '/app/audit') return <AuditPage auditEvents={auditEvents} />;
+  return <DashboardPage navigate={navigate} workflow={workflow} reviewableActions={reviewableActions} />;
 }
 
 function AuthPage({ path, navigate, workflow }: { path: string; navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void }) {
@@ -212,7 +253,8 @@ function AuthPage({ path, navigate, workflow }: { path: string; navigate: (path:
   );
 }
 
-function DashboardPage({ navigate, workflow }: { navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void }) {
+function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void; reviewableActions: AgentAction[] }) {
+  const approvalQueue = [...reviewableActions, ...agentActions];
   return (
     <main className="page-grid">
       <section className="kpi-grid">
@@ -227,7 +269,7 @@ function DashboardPage({ navigate, workflow }: { navigate: (path: string) => voi
       </section>
       <section className="panel">
         <PanelHead title="Pending agent approvals" action="Review" onClick={() => navigate('/app/agent')} />
-        <ActionList actions={agentActions} workflow={workflow} />
+        <ActionList actions={approvalQueue} workflow={workflow} />
       </section>
       <section className="panel span-3">
         <PanelHead title="Customer risk queue" action="Create follow-up task" onClick={() => workflow('Follow-up task draft', 'A reviewable collections task will be created for selected high-risk customers.', 'Open task draft')} />
@@ -269,7 +311,7 @@ function CustomersPage({ navigate, workflow }: { navigate: (path: string) => voi
   );
 }
 
-function CustomerWorkspace({ customerId, workflow }: { customerId: string; workflow: (title: string, body: string, action?: string) => void }) {
+function CustomerWorkspace({ customerId, workflow, auditEvents }: { customerId: string; workflow: (title: string, body: string, action?: string) => void; auditEvents: AuditEvent[] }) {
   const customer = customers.find((item) => item.id === customerId) || customers[0];
   const customerInvoices = invoices.filter((invoice) => invoice.customerId === customer.id);
   return (
@@ -292,7 +334,7 @@ function CustomerWorkspace({ customerId, workflow }: { customerId: string; workf
         ))}
       </section>
       <section className="panel span-2"><PanelHead title="Invoice-level details" /><InvoiceTable rows={customerInvoices} /></section>
-      <section className="panel"><PanelHead title="Audit and agent notes" /><ActivityList /></section>
+      <section className="panel"><PanelHead title="Audit and agent notes" /><ActivityList events={auditEvents} /></section>
     </main>
   );
 }
@@ -342,7 +384,8 @@ function ReconciliationPage({ workflow }: { workflow: (title: string, body: stri
   );
 }
 
-function AgentCommandCenter({ context, workflow }: { context: AgentContext; workflow: (title: string, body: string, action?: string) => void }) {
+function AgentCommandCenter({ context, workflow, reviewableActions, auditEvents }: { context: AgentContext; workflow: (title: string, body: string, action?: string) => void; reviewableActions: AgentAction[]; auditEvents: AuditEvent[] }) {
+  const approvalQueue = [...reviewableActions, ...agentActions];
   return (
     <main className="agent-command">
       <section className="agent-main">
@@ -357,8 +400,8 @@ function AgentCommandCenter({ context, workflow }: { context: AgentContext; work
       </section>
       <aside className="agent-side">
         <ContextCard context={context} />
-        <ActionList actions={agentActions} workflow={workflow} />
-        <ActivityList />
+        <ActionList actions={approvalQueue} workflow={workflow} />
+        <ActivityList events={auditEvents} />
       </aside>
     </main>
   );
@@ -400,8 +443,8 @@ function SettingsPage({ path, workflow }: { path: string; workflow: (title: stri
   );
 }
 
-function AuditPage() {
-  return <main className="page-grid"><section className="panel span-3"><PanelHead title="Audit trail" /><ActivityList /></section></main>;
+function AuditPage({ auditEvents }: { auditEvents: AuditEvent[] }) {
+  return <main className="page-grid"><section className="panel span-3"><PanelHead title="Audit trail" /><ActivityList events={auditEvents} /></section></main>;
 }
 
 function FloatingAgent({ context, workflow }: { context: AgentContext; workflow: (title: string, body: string, action?: string) => void }) {
@@ -414,7 +457,7 @@ function FloatingAgent({ context, workflow }: { context: AgentContext; workflow:
   );
 }
 
-function WorkflowModal({ modal, onClose }: { modal: ModalState; onClose: () => void }) {
+function WorkflowModal({ modal, onClose, onConfirm }: { modal: ModalState; onClose: () => void; onConfirm: () => void }) {
   return (
     <div className="modal-backdrop">
       <section className="modal">
@@ -422,7 +465,7 @@ function WorkflowModal({ modal, onClose }: { modal: ModalState; onClose: () => v
         <p>{modal.body}</p>
         <div className="modal-actions">
           <button className="secondary" onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={onClose}>{modal.action || 'Create draft'}</button>
+          <button className="primary" onClick={onConfirm}>{modal.action || 'Create draft'}</button>
         </div>
       </section>
     </div>
@@ -478,8 +521,18 @@ function ActionList({ actions, workflow }: { actions: AgentAction[]; workflow: (
   return <div className="action-list">{actions.map((action) => <button key={action.id} onClick={() => workflow(action.title, `${action.description} Status: ${action.status}.`, 'Review approval')}><CheckCircle2 size={16} /><span><strong>{action.title}</strong><em>{action.status}</em></span></button>)}</div>;
 }
 
-function ActivityList() {
-  const items = ['Login recorded for Finance User', 'Oracle import validation completed', 'SOA draft created for Nakheel Communities', 'Agent recommendation queued for approval', 'Bank transaction match override awaiting approval'];
+function ActivityList({ events = [] }: { events?: AuditEvent[] }) {
+  const seedItems = [
+    'Login recorded for Finance User',
+    'Oracle import validation completed',
+    'SOA draft created for Nakheel Communities',
+    'Agent recommendation queued for approval',
+    'Bank transaction match override awaiting approval'
+  ];
+  const items = [
+    ...events.map((event) => `${event.action}: ${event.details}`),
+    ...seedItems
+  ];
   return <ul className="activity-list">{items.map((item) => <li key={item}><span />{item}</li>)}</ul>;
 }
 
@@ -504,4 +557,27 @@ function totalOverdue() {
 
 function sumBy(key: keyof Pick<EntityAging, 'critical90' | 'critical180' | 'eclProvision'>) {
   return entities.reduce((sum, entity) => sum + entity[key], 0);
+}
+
+function loadReviewableActions() {
+  return loadJson<AgentAction[]>('dhcm.reviewableActions', []);
+}
+
+function loadAuditEvents() {
+  return loadJson<AuditEvent[]>('dhcm.auditEvents', []);
+}
+
+function loadJson<T>(key: string, fallback: T) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function inferRisk(title: string): AgentAction['riskLevel'] {
+  if (/legal|payment status|overwrite|external|bank|reconciliation/i.test(title)) return 'high';
+  if (/email|soa|collection|export|oracle|import/i.test(title)) return 'medium';
+  return 'low';
 }
