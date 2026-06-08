@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   ClipboardList,
   FileSpreadsheet,
+  FolderOpen,
   KeyRound,
   Landmark,
   Lock,
@@ -52,6 +53,7 @@ const appRoutes = [
   ['Reconciliation', '/app/reconciliation', RefreshCw],
   ['Agent', '/app/agent', Bot],
   ['Exports', '/app/exports', FileSpreadsheet],
+  ['Files', '/app/files', FolderOpen],
   ['Reports', '/app/reports', ClipboardList],
   ['Emails', '/app/emails', Mail],
   ['Settings', '/app/settings', ShieldCheck],
@@ -293,6 +295,7 @@ function renderRoute(
   if (path === '/app/reconciliation') return <ReconciliationPage workflow={workflow} />;
   if (path === '/app/agent') return <AgentCommandCenter context={context} workflow={workflow} reviewableActions={reviewableActions} auditEvents={auditEvents} />;
   if (path === '/app/exports') return <ExportsPage workflow={workflow} />;
+  if (path === '/app/files') return <FileManagerPage navigate={navigate} workflow={workflow} />;
   if (path === '/app/reports') return <ReportsPage workflow={workflow} />;
   if (path === '/app/emails') return <EmailsPage workflow={workflow} />;
   if (path === '/app/settings' || path === '/app/mcp-tools' || path === '/app/admin/diagnostics') return <SettingsPage path={path} workflow={workflow} />;
@@ -373,6 +376,8 @@ function ProtectedGate({ navigate, workflow }: { navigate: (path: string) => voi
 
 function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void; reviewableActions: AgentAction[] }) {
   const approvalQueue = [...reviewableActions, ...agentActions];
+  const [selectedEntity, setSelectedEntity] = useState(entities[0].entity);
+  const selectedEntityRow = entities.find((entity) => entity.entity === selectedEntity) || entities[0];
   return (
     <main className="page-grid">
       <section className="kpi-grid span-3">
@@ -390,8 +395,13 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
         <ActionList actions={approvalQueue} workflow={workflow} />
       </section>
       <section className="panel">
-        <PanelHead title="Portfolio mix" />
-        <PortfolioDonut />
+        <PanelHead title="Portfolio mix" action="Open files" onClick={() => navigate('/app/files')} />
+        <PortfolioDonut selectedEntity={selectedEntity} onSelect={setSelectedEntity} />
+        <div className="chart-detail">
+          <strong>{selectedEntityRow.entity}</strong>
+          <span>{formatAed(selectedEntityRow.totalAr)} total AR</span>
+          <span>{formatAed(selectedEntityRow.critical90)} 90+ exposure</span>
+        </div>
       </section>
       <section className="panel span-2">
         <PanelHead title="Collections trend" action="Open reports" onClick={() => navigate('/app/reports')} />
@@ -550,6 +560,14 @@ function AgentCommandCenter({ context, workflow, reviewableActions, auditEvents 
         <div className="agent-orb"><Bot size={30} /></div>
         <h2>AI Finance Agent Command Center</h2>
         <p>Ask about AR aging, customer risk, Oracle imports, reconciliation exceptions, SOA, email drafts, exports, or audit activity. The agent drafts actions only; approval is required before execution.</p>
+        <div className="agentic-board">
+          {[
+            ['Observe', 'Read page context, filters, selected customer, and seed/live finance data.'],
+            ['Analyze', 'Prioritize AR exposure, reconciliation exceptions, failed imports, and email needs.'],
+            ['Draft', 'Prepare SOA, reminders, matching proposals, report summaries, and audit notes.'],
+            ['Approve', 'Wait for user approval before any backend function executes.']
+          ].map(([title, body]) => <div key={title}><strong>{title}</strong><span>{body}</span></div>)}
+        </div>
         <div className="agent-prompt-row">
           {['AR aging', 'Collections', 'Reconciliation', 'Oracle import', 'Email drafting', 'Audit'].map((prompt) => (
             <button key={prompt} className={prompt === selectedPrompt ? 'active' : ''} onClick={() => setSelectedPrompt(prompt)}>{prompt}</button>
@@ -583,6 +601,39 @@ function ExportsPage({ workflow }: { workflow: (title: string, body: string, act
       <section className="panel span-3">
         <PanelHead title="Finance-standard Excel export center" action="Generate workbook" onClick={() => workflow('Excel export job', 'Creates an export job for Supabase Edge Function processing with reviewed filters, prepared-by user, timestamps, and audit metadata.', 'Create export job')} />
         <div className="sheet-grid">{sheets.map((sheet) => <span className="chip" key={sheet}>{sheet}</span>)}</div>
+      </section>
+    </main>
+  );
+}
+
+function FileManagerPage({ navigate, workflow }: { navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void }) {
+  const files = [
+    { name: 'Nakheel_SOA_May_2025.xlsx', owner: 'Nakheel Communities', type: 'SOA Excel', status: 'Draft', route: '/app/customers/cust-nakheel' },
+    { name: 'Oracle_AR_Aging_May_2025.xlsx', owner: 'Oracle Fusion Import', type: 'Import Validation', status: 'Review required', route: '/app/imports' },
+    { name: 'Emaar_VAT_Reconciliation.pdf', owner: 'Emaar Properties PJSC', type: 'VAT Reconciliation', status: 'Attached', route: '/app/customers/cust-emaar' },
+    { name: 'Bank_Reconciliation_Exceptions.xlsx', owner: 'Treasury', type: 'Reconciliation', status: 'Pending approval', route: '/app/reconciliation' }
+  ];
+  return (
+    <main className="page-grid">
+      <section className="panel span-3">
+        <PanelHead title="Finance file manager" action="Upload document" onClick={() => workflow('Document upload', 'Upload opens a Supabase Storage workflow. Files are permission-scoped and virus scanning must run before production sharing.', 'Create upload record')} />
+        <div className="file-grid">
+          {files.map((file) => (
+            <article key={file.name} className="file-card">
+              <FolderOpen size={24} />
+              <div>
+                <strong>{file.name}</strong>
+                <span>{file.owner} - {file.type}</span>
+                <em>{file.status}</em>
+              </div>
+              <div className="file-actions">
+                <button onClick={() => navigate(file.route)}>Open workspace</button>
+                <button onClick={() => workflow('Download file', `${file.name} download will be generated through a permission-scoped backend export/storage URL.`, 'Create download record')}>Download</button>
+                <button onClick={() => workflow('Email attachment', `${file.name} will be attached to a draft email only after approval.`, 'Draft email')}>Email</button>
+              </div>
+            </article>
+          ))}
+        </div>
       </section>
     </main>
   );
@@ -713,7 +764,7 @@ function StackedAgingChart({ rows }: { rows: EntityAging[] }) {
   );
 }
 
-function PortfolioDonut() {
+function PortfolioDonut({ selectedEntity, onSelect }: { selectedEntity: string; onSelect: (entity: string) => void }) {
   const total = totalAr();
   let cursor = 0;
   const stops = entities.map((entity, index) => {
@@ -725,7 +776,11 @@ function PortfolioDonut() {
   return (
     <div className="donut-wrap">
       <div className="donut" style={{ background: `conic-gradient(${stops})` }}><span>{formatAed(total)}</span></div>
-      <div className="donut-list">{entities.map((entity, index) => <span key={entity.entity}><i style={{ background: chartColors[index % chartColors.length] }} />{entity.entity} {Math.round((entity.totalAr / total) * 100)}%</span>)}</div>
+      <div className="donut-list">{entities.map((entity, index) => (
+        <button className={entity.entity === selectedEntity ? 'active' : ''} key={entity.entity} onClick={() => onSelect(entity.entity)}>
+          <i style={{ background: chartColors[index % chartColors.length] }} />{entity.entity} {Math.round((entity.totalAr / total) * 100)}%
+        </button>
+      ))}</div>
     </div>
   );
 }
