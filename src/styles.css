@@ -53,6 +53,7 @@ button {
   padding: 0 15vw;
   background: rgba(255, 255, 255, 0.94);
   color: #0f1b2f;
+  box-shadow: 0 1px 0 rgba(17, 35, 67, 0.06);
 }
 
 .public-nav nav {
@@ -104,7 +105,9 @@ td span,
 }
 
 .primary,
+.nav-launch,
 .secondary,
+.hero-secondary,
 .panel-head button,
 .quick-actions button,
 .report-grid button,
@@ -128,7 +131,14 @@ td span,
   box-shadow: 0 18px 46px rgba(36, 193, 201, 0.22);
 }
 
+.nav-launch {
+  background: #11244a;
+  color: #ffffff;
+  box-shadow: 0 16px 34px rgba(17, 36, 74, 0.18);
+}
+
 .secondary,
+.hero-secondary,
 .panel-head button,
 .quick-actions button,
 .report-grid button,
@@ -139,6 +149,11 @@ td span,
   color: #d9e5f7;
 }
 
+.hero-secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
 .large {
   min-height: 46px;
   padding: 12px 20px;
@@ -146,10 +161,10 @@ td span,
 
 .hero {
   display: grid;
-  min-height: 730px;
+  min-height: 732px;
   grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
   gap: 48px;
-  padding: 112px 15vw;
+  padding: 112px 15vw 104px;
   background: linear-gradient(120deg, #112143 0%, #193563 46%, #0d7276 100%);
   color: #ffffff;
 }
@@ -211,9 +226,11 @@ td span,
 
 .preview-card {
   align-self: center;
+  max-width: 628px;
   padding: 18px;
   background: #f7fafc;
   color: #111827;
+  border-radius: 15px;
 }
 
 .window-dots {
@@ -305,6 +322,74 @@ td span,
   background: rgba(34, 195, 207, 0.09);
   color: #102033;
   font-size: 13px;
+}
+
+.modules-band {
+  display: grid;
+  place-items: center;
+  padding: 76px 24px 90px;
+  background: #f6f8fb;
+  color: #111827;
+  text-align: center;
+}
+
+.section-kicker {
+  color: #0ea5b4;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+}
+
+.modules-band h2 {
+  max-width: 680px;
+  margin: 12px 0 14px;
+  color: #111827;
+  font-size: clamp(34px, 3vw, 42px);
+  line-height: 1.02;
+}
+
+.modules-band p {
+  max-width: 650px;
+  margin: 0;
+  color: #617089;
+  font-size: 17px;
+  line-height: 1.45;
+}
+
+.module-teasers {
+  display: grid;
+  width: min(1120px, 100%);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 46px;
+  text-align: left;
+}
+
+.module-teasers button {
+  min-height: 150px;
+  border: 1px solid #dce4ee;
+  border-radius: 8px;
+  padding: 22px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 18px 46px rgba(16, 30, 54, 0.06);
+  text-align: left;
+}
+
+.module-teasers strong,
+.module-teasers span {
+  display: block;
+}
+
+.module-teasers strong {
+  margin-bottom: 12px;
+  font-size: 17px;
+}
+
+.module-teasers span {
+  color: #617089;
+  line-height: 1.5;
 }
 
 .console {
@@ -806,6 +891,10 @@ tbody tr {
   }
 
   .hero-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .module-teasers {
     grid-template-columns: 1fr;
   }
 

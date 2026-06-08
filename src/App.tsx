@@ -178,7 +178,7 @@ function LandingPage({ navigate }: { navigate: (path: string) => void }) {
         </nav>
         <div className="nav-actions">
           <button className="ghost" onClick={() => navigate('/login')}>Sign in</button>
-          <button className="primary" onClick={() => navigate('/app/dashboard')}>Launch console <ArrowRight size={16} /></button>
+          <button className="nav-launch" onClick={() => navigate('/app/dashboard')}>Launch console <ArrowRight size={16} /></button>
         </div>
       </header>
       <main className="hero">
@@ -188,7 +188,7 @@ function LandingPage({ navigate }: { navigate: (path: string) => void }) {
           <p>Unify order-to-cash collections, credit control, asset management, and executive analytics in a single audit-ready workspace with an AI agent that never acts without approval.</p>
           <div className="hero-actions">
             <button className="primary large" onClick={() => navigate('/app/dashboard')}>Launch console <ArrowRight size={17} /></button>
-            <button className="secondary large" onClick={() => navigate('/ar')}>Explore AR module</button>
+            <button className="hero-secondary large" onClick={() => navigate('/ar')}>Explore modules</button>
           </div>
           <div className="hero-stats">
             <strong>{formatAed(totalAr())}</strong><span>AR under management</span>
@@ -207,6 +207,23 @@ function LandingPage({ navigate }: { navigate: (path: string) => void }) {
           <div className="agent-strip"><Bot size={16} /> Agent: Prioritize 91+ day invoices above AED 250k. Draft prepared and awaiting approval.</div>
         </section>
       </main>
+      <section className="modules-band" id="modules">
+        <span className="section-kicker">Modules</span>
+        <h2>Every finance discipline.<br />One operating system.</h2>
+        <p>Replace fragmented spreadsheets and per-entity portals with a unified, audit-ready workspace.</p>
+        <div className="module-teasers">
+          {[
+            ['AR Control', 'Aging, DSO, CEI, ECL, unapplied cash, and entity exposure.'],
+            ['Customer Workspace', 'SOA, documents, payments, disputes, promises, and contacts in context.'],
+            ['AI Agent', 'Finance recommendations and drafts that require approval before execution.']
+          ].map(([title, body]) => (
+            <button key={title} onClick={() => navigate(title === 'AI Agent' ? '/app/agent' : title === 'AR Control' ? '/ar' : '/app/customers')}>
+              <strong>{title}</strong>
+              <span>{body}</span>
+            </button>
+          ))}
+        </div>
+      </section>
     </>
   );
 }
