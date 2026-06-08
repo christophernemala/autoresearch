@@ -423,23 +423,33 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
   const [selectedEntity, setSelectedEntity] = useState(entities[0].entity);
   const selectedEntityRow = entities.find((entity) => entity.entity === selectedEntity) || entities[0];
   return (
-    <main className="page-grid">
-      <section className="kpi-grid span-3">
-        <MetricCard label="Total AR" value={formatAed(totalAr())} delta="+3.1%" />
-        <MetricCard label="Overdue Balance" value={formatAed(totalOverdue())} delta="-1.8%" />
-        <MetricCard label="Critical 90+" value={formatAed(sumBy('critical90'))} delta="+0.8%" warning />
-        <MetricCard label="CEI" value="84.9%" delta="+2.2%" />
+    <main className="command-center">
+      <section className="command-hero">
+        <div>
+          <span className="eyebrow">AI Finance Command Center</span>
+          <h2>One screen for DHCM finance operations.</h2>
+          <p>Portfolio telemetry, prioritized action queue, autonomous finance workers, and approval-gated execution across AR, SOA, banking, imports, and reports.</p>
+        </div>
+        <button className="primary" onClick={() => workflow('Run finance command center', 'The agent will scan AR aging, bank exceptions, Oracle imports, email drafts, and report queues, then prepare a plan for approval.', 'Build approval plan')}>Run command scan</button>
       </section>
-      <section className="panel span-2">
-        <PanelHead title="Executive AR Control" action="Open AR" onClick={() => navigate('/ar')} />
-        <EntityBars />
+      <section className="command-kpis">
+        <MetricCard label="Actions Pending Review" value={`${approvalQueue.length}`} delta="+3 today" />
+        <MetricCard label="MTD Cash Prioritized" value={formatAed(sumBy('critical90'))} delta="90+ exposure" warning />
+        <MetricCard label="Active Agents" value="5" delta="2 dry-run" />
+        <MetricCard label="Transactions Today" value="1,284" delta="99.97% match" />
+        <MetricCard label="Anomalies Flagged 7d" value="32" delta="-11%" warning />
+        <MetricCard label="Error Rate" value="0.08%" delta="within tolerance" />
+      </section>
+      <section className="panel command-span-2">
+        <PanelHead title="Prioritized action queue" action="Open agent" onClick={() => navigate('/app/agent')} />
+        <CommandActionQueue workflow={workflow} />
       </section>
       <section className="panel">
-        <PanelHead title="Pending agent approvals" action="Review" onClick={() => navigate('/app/agent')} />
-        <ActionList actions={approvalQueue} workflow={workflow} />
+        <PanelHead title="Agent fleet" action="Run agent" onClick={() => workflow('Run selected finance agent', 'Agent run starts in dry-run mode, builds a plan, and waits for approval before execution.', 'Start dry run')} />
+        <AgentFleet workflow={workflow} />
       </section>
       <section className="panel">
-        <PanelHead title="Portfolio mix" action="Open files" onClick={() => navigate('/app/files')} />
+        <PanelHead title="Portfolio mix" action="Open AR" onClick={() => navigate('/ar')} />
         <PortfolioDonut selectedEntity={selectedEntity} onSelect={setSelectedEntity} />
         <div className="chart-detail">
           <strong>{selectedEntityRow.entity}</strong>
@@ -447,11 +457,15 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
           <span>{formatAed(selectedEntityRow.critical90)} 90+ exposure</span>
         </div>
       </section>
-      <section className="panel span-2">
-        <PanelHead title="Collections trend" action="Open reports" onClick={() => navigate('/app/reports')} />
-        <TrendChart />
+      <section className="panel">
+        <PanelHead title="ROI telemetry" action="Open reports" onClick={() => navigate('/app/reports')} />
+        <RoiTelemetry />
       </section>
-      <section className="panel span-3">
+      <section className="panel">
+        <PanelHead title="Plan pipeline" action="Create plan" onClick={() => workflow('Plan approval pipeline', 'The command center will build proposed actions, selected items, estimated AED impact, and approval status.', 'Create plan')} />
+        <PlanPipeline />
+      </section>
+      <section className="panel command-span-3">
         <PanelHead title="Customer risk queue" action="Create follow-up task" onClick={() => workflow('Follow-up task draft', 'A reviewable collections task will be created for selected high-risk customers.', 'Open task draft')} />
         <CustomerTable navigate={navigate} />
       </section>
@@ -627,6 +641,20 @@ function AgentCommandCenter({ context, workflow, reviewableActions, auditEvents 
           </div>
           <button className="secondary" onClick={() => workflow('AI collection recommendation', 'Creates finance.agent_actions records with pending approval status. No email, legal status, payment status, or external system action is executed.', 'Create approval records')}>Create reviewable action from chat</button>
         </div>
+        <section className="plan-review-card">
+          <PanelHead title="Plan ready - proposed finance actions" action="Approve selected" onClick={() => workflow('Approve selected agent plan', 'Selected actions will execute through typed backend functions only after approval and audit logging.', 'Approve plan')} />
+          {[
+            ['Draft SOA for Nakheel 181-360 exposure', 'High', 'AED 11.6M', 'Checked'],
+            ['Prepare VAT support request for Emaar', 'High', 'AED 9.3M', 'Checked'],
+            ['Create reconciliation review for Meraas receipt', 'Medium', 'AED 4.6M', 'Checked'],
+            ['Generate Q2 AR executive summary', 'Low', '12 sheets', 'Unchecked']
+          ].map(([title, severity, impact, state]) => (
+            <label className="plan-action" key={title}>
+              <input type="checkbox" defaultChecked={state === 'Checked'} />
+              <span><strong>{title}</strong><em>{severity} severity - {impact}</em></span>
+            </label>
+          ))}
+        </section>
       </section>
       <aside className="agent-side">
         <ContextCard context={context} />
@@ -785,9 +813,62 @@ function PanelHead({ title, action, onClick }: { title: string; action?: string;
   return <div className="panel-head"><h2>{title}</h2>{action ? <button onClick={onClick}>{action}</button> : null}</div>;
 }
 
-function EntityBars() {
-  const max = Math.max(...entities.map((entity) => entity.totalAr));
-  return <div className="bars">{entities.map((entity) => <div key={entity.entity} className="bar-row"><span>{entity.entity}</span><div><i style={{ width: `${(entity.totalAr / max) * 100}%` }} /></div><strong>{formatAed(entity.totalAr)}</strong></div>)}</div>;
+function CommandActionQueue({ workflow }: { workflow: (title: string, body: string, action?: string) => void }) {
+  const queue = [
+    { severity: 'High', title: 'Nakheel 181-360 exposure requires SOA approval', owner: 'Collections Agent', impact: 'AED 11.6M', state: 'Plan ready' },
+    { severity: 'High', title: 'Emaar VAT reconciliation dispute missing support', owner: 'Oracle Import Assistant', impact: 'AED 9.3M', state: 'HITL required' },
+    { severity: 'Medium', title: 'Meraas receipt partially matched below tolerance', owner: 'Reconciliation Agent', impact: 'AED 4.6M', state: 'Review' },
+    { severity: 'Medium', title: 'Unallocated bulk receipt needs customer mapping', owner: 'Banking Agent', impact: 'AED 2.9M', state: 'Detected' },
+    { severity: 'Low', title: 'Q2 executive pack ready for export', owner: 'Reporting Agent', impact: '12 sheets', state: 'Draft' }
+  ];
+  return (
+    <div className="command-queue">
+      {queue.map((item) => (
+        <button key={item.title} onClick={() => workflow(item.title, `${item.owner} has prepared a ${item.state.toLowerCase()} item with impact ${item.impact}. User approval is required before execution.`, 'Review plan')}>
+          <span className={`severity ${item.severity.toLowerCase()}`}>{item.severity}</span>
+          <strong>{item.title}</strong>
+          <em>{item.owner}</em>
+          <b>{item.impact}</b>
+          <i>{item.state}</i>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function AgentFleet({ workflow }: { workflow: (title: string, body: string, action?: string) => void }) {
+  const fleet = [
+    ['AR Aging Analyst', 'Active', '1,284 tx', '98.7% confidence'],
+    ['Collections Agent', 'Active', '18 drafts', 'AED 38.5M queued'],
+    ['Reconciliation Agent', 'Dry-run', '32 exceptions', '87% match'],
+    ['Oracle Import Assistant', 'Active', '14 failed rows', 'Validation mode'],
+    ['IFRS Risk Scorer', 'Beta', '5 entities', 'ECL draft']
+  ];
+  return (
+    <div className="agent-fleet">
+      {fleet.map(([name, status, volume, metric]) => (
+        <article key={name}>
+          <div><strong>{name}</strong><span>{volume} - {metric}</span></div>
+          <button onClick={() => workflow(`Run ${name}`, `${name} will run in dry-run mode first, generate a plan, and wait for approval before any backend action.`, 'Run dry-run')}>{status}</button>
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function RoiTelemetry() {
+  const items = [
+    ['Cash accelerated', 'AED 38.5M'],
+    ['Manual hours avoided', '142h'],
+    ['Disputes packaged', '7'],
+    ['Audit-ready actions', '46']
+  ];
+  return <div className="roi-ledger">{items.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>;
+}
+
+function PlanPipeline() {
+  const phases = ['Idle', 'Planning', 'Plan ready', 'Executing', 'Complete'];
+  return <div className="plan-pipeline">{phases.map((phase, index) => <div className={index === 2 ? 'active' : ''} key={phase}><span>{index + 1}</span><strong>{phase}</strong></div>)}</div>;
 }
 
 function MiniAgingChart() {
@@ -837,11 +918,6 @@ function PortfolioDonut({ selectedEntity, onSelect }: { selectedEntity: string; 
       ))}</div>
     </div>
   );
-}
-
-function TrendChart() {
-  const points = [68, 74, 79, 84, 91, 88, 96];
-  return <div className="trend-chart">{points.map((point, index) => <span key={index} style={{ height: `${point}%` }}><em>{point}%</em></span>)}</div>;
 }
 
 function ExposureTrend() {
