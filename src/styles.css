@@ -262,6 +262,7 @@ td span,
   display: grid;
   grid-template-columns: repeat(4, minmax(150px, 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .preview-kpis {
@@ -270,6 +271,7 @@ td span,
 }
 
 .metric {
+  min-width: 0;
   padding: 18px;
   background: rgba(255, 255, 255, 0.08);
 }
@@ -471,6 +473,7 @@ td span,
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   padding-bottom: 110px;
+  align-items: start;
 }
 
 .span-2 {
@@ -485,6 +488,8 @@ td span,
 .customer-hero,
 .agent-main,
 .agent-side {
+  min-width: 0;
+  overflow: hidden;
   padding: 18px;
 }
 
@@ -507,7 +512,7 @@ td span,
 
 .bar-row {
   display: grid;
-  grid-template-columns: 70px 1fr 120px;
+  grid-template-columns: 58px minmax(120px, 1fr) minmax(96px, auto);
   gap: 12px;
   align-items: center;
 }
@@ -521,6 +526,7 @@ td span,
 
 .bar-row i {
   display: block;
+  max-width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #24c1c9, #a49a62);
@@ -599,7 +605,7 @@ tbody tr {
 
 .stacked-row {
   display: grid;
-  grid-template-columns: 62px 1fr 112px;
+  grid-template-columns: 56px minmax(120px, 1fr) minmax(96px, auto);
   gap: 12px;
   align-items: center;
 }
@@ -648,9 +654,10 @@ tbody tr {
 
 .donut-wrap {
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
   gap: 18px;
   align-items: center;
+  min-width: 0;
 }
 
 .donut {
@@ -678,6 +685,7 @@ tbody tr {
   display: grid;
   gap: 8px;
   color: #c9d6ea;
+  min-width: 0;
 }
 
 .donut-list span {
@@ -730,7 +738,7 @@ tbody tr {
 
 .ecl-chart div {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) 2fr 110px;
+  grid-template-columns: minmax(92px, 1fr) minmax(90px, 2fr) minmax(86px, auto);
   gap: 10px;
   align-items: center;
 }

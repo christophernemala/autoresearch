@@ -375,7 +375,7 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
   const approvalQueue = [...reviewableActions, ...agentActions];
   return (
     <main className="page-grid">
-      <section className="kpi-grid">
+      <section className="kpi-grid span-3">
         <MetricCard label="Total AR" value={formatAed(totalAr())} delta="+3.1%" />
         <MetricCard label="Overdue Balance" value={formatAed(totalOverdue())} delta="-1.8%" />
         <MetricCard label="Critical 90+" value={formatAed(sumBy('critical90'))} delta="+0.8%" warning />
