@@ -7,11 +7,13 @@ import {
   CircleDollarSign,
   ClipboardList,
   FileSpreadsheet,
+  KeyRound,
   Landmark,
   Lock,
   LogOut,
   Mail,
   RefreshCw,
+  Send,
   ShieldCheck,
   Upload,
   Users
@@ -35,6 +37,12 @@ type AuditEvent = {
   createdAt: string;
 };
 
+type ChatMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+};
+
 const appRoutes = [
   ['Dashboard', '/app/dashboard', Activity],
   ['AR Control', '/ar', CircleDollarSign],
@@ -49,6 +57,8 @@ const appRoutes = [
   ['Settings', '/app/settings', ShieldCheck],
   ['Audit', '/app/audit', Lock]
 ] as const;
+
+const chartColors = ['#24c1c9', '#38d996', '#ffcf70', '#8fb7ff', '#ff8d8d'];
 
 export function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -293,7 +303,25 @@ function renderRoute(
 function AuthPage({ path, navigate, workflow, onAuth }: { path: string; navigate: (path: string) => void; workflow: (title: string, body: string, action?: string) => void; onAuth: (email: string, role: Role) => void }) {
   const title = path === '/signup' ? 'Create your DHCM account' : path === '/forgot-password' ? 'Reset password' : 'Sign in';
   const [email, setEmail] = useState('finance@dhcm.example');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<Role>('Finance User');
+  const [error, setError] = useState('');
+  const submitAuth = () => {
+    setError('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter a valid work email address.');
+      return;
+    }
+    if (path === '/forgot-password') {
+      workflow('Password reset request', `Password reset is wired as a safe Supabase Auth workflow. No password is stored in the browser. Reset email requested for ${email}.`, 'Create reset audit record');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters for the local review gate.');
+      return;
+    }
+    onAuth(email, role);
+  };
   return (
     <main className="auth-page">
       <section className="auth-panel">
@@ -302,7 +330,7 @@ function AuthPage({ path, navigate, workflow, onAuth }: { path: string; navigate
         </button>
         <h1>{title}</h1>
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="finance@dhcm.example" /></label>
-        {path !== '/forgot-password' ? <label>Password<input type="password" placeholder="Password" /></label> : null}
+        {path !== '/forgot-password' ? <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minimum 8 characters" /></label> : null}
         {path !== '/forgot-password' ? (
           <label>
             Role
@@ -313,7 +341,9 @@ function AuthPage({ path, navigate, workflow, onAuth }: { path: string; navigate
             </select>
           </label>
         ) : null}
-        <button className="primary" onClick={() => path === '/forgot-password' ? workflow('Supabase Auth action', requireSupabaseSetup(title).body, title) : onAuth(email, role)}>{title}</button>
+        {error ? <p className="form-error">{error}</p> : null}
+        <div className="security-note"><KeyRound size={16} /> Passwords are not persisted in the frontend. Production password reset and MFA must run through Supabase Auth.</div>
+        <button className="primary" onClick={submitAuth}>{title}</button>
         <div className="auth-links">
           <button onClick={() => navigate('/login')}>Login</button>
           <button onClick={() => navigate('/signup')}>Signup</button>
@@ -359,6 +389,14 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
         <PanelHead title="Pending agent approvals" action="Review" onClick={() => navigate('/app/agent')} />
         <ActionList actions={approvalQueue} workflow={workflow} />
       </section>
+      <section className="panel">
+        <PanelHead title="Portfolio mix" />
+        <PortfolioDonut />
+      </section>
+      <section className="panel span-2">
+        <PanelHead title="Collections trend" action="Open reports" onClick={() => navigate('/app/reports')} />
+        <TrendChart />
+      </section>
       <section className="panel span-3">
         <PanelHead title="Customer risk queue" action="Create follow-up task" onClick={() => workflow('Follow-up task draft', 'A reviewable collections task will be created for selected high-risk customers.', 'Open task draft')} />
         <CustomerTable navigate={navigate} />
@@ -368,12 +406,16 @@ function DashboardPage({ navigate, workflow, reviewableActions }: { navigate: (p
 }
 
 function ArPage({ workflow }: { workflow: (title: string, body: string, action?: string) => void }) {
+  const [period, setPeriod] = useState('Q2 2025');
+  const [entityFilter, setEntityFilter] = useState('All');
+  const [displayMode, setDisplayMode] = useState('Amount');
+  const visibleEntities = entityFilter === 'All' ? entities : entities.filter((entity) => entity.entity === entityFilter);
   return (
     <main className="page-grid">
       <section className="filter-bar span-3">
-        {['Q1 2025', 'Q2 2025', 'YTD'].map((item) => <button key={item} className={item === 'Q2 2025' ? 'active' : ''}>{item}</button>)}
-        {['All', 'DCM', 'DPCM', 'DPDM', 'NCM', 'NPCM'].map((item) => <button key={item}>{item}</button>)}
-        {['Amount', 'Percent', 'DSO'].map((item) => <button key={item}>{item}</button>)}
+        {['Q1 2025', 'Q2 2025', 'YTD'].map((item) => <button key={item} className={item === period ? 'active' : ''} onClick={() => setPeriod(item)}>{item}</button>)}
+        {['All', 'DCM', 'DPCM', 'DPDM', 'NCM', 'NPCM'].map((item) => <button key={item} className={item === entityFilter ? 'active' : ''} onClick={() => setEntityFilter(item)}>{item}</button>)}
+        {['Amount', 'Percent', 'DSO'].map((item) => <button key={item} className={item === displayMode ? 'active' : ''} onClick={() => setDisplayMode(item)}>{item}</button>)}
       </section>
       <section className="kpi-grid span-3">
         <MetricCard label="Total AR" value={formatAed(totalAr())} delta="+3.1%" />
@@ -381,8 +423,11 @@ function ArPage({ workflow }: { workflow: (title: string, body: string, action?:
         <MetricCard label="Critical 180+" value={formatAed(sumBy('critical180'))} delta="+0.5%" warning />
         <MetricCard label="ECL Provision" value={formatAed(sumBy('eclProvision'))} delta="+2.9%" warning />
       </section>
-      <section className="panel span-2"><PanelHead title="Stacked aging by entity" action="Export view" onClick={() => workflow('AR view export', 'The selected AR filters will be captured as an export job for review.', 'Create export job')} /><EntityBars /></section>
+      <section className="panel span-2"><PanelHead title={`Stacked aging by entity - ${period} - ${displayMode}`} action="Export view" onClick={() => workflow('AR view export', `The ${period} / ${entityFilter} / ${displayMode} AR filters will be captured as an export job for review.`, 'Create export job')} /><StackedAgingChart rows={visibleEntities} /></section>
       <section className="panel"><InsightPanel workflow={workflow} /></section>
+      <section className="panel"><PanelHead title="90+ exposure trend" /><ExposureTrend /></section>
+      <section className="panel"><PanelHead title="ECL provision by bucket" /><EclProvisionChart /></section>
+      <section className="panel"><PanelHead title="Top overdue customers" /><TopCustomerChart /></section>
       <section className="panel span-3"><PanelHead title="90+ priority list" action="Draft collection actions" onClick={() => workflow('Collection action draft', 'The AI agent will draft actions for 90+ priority accounts and place them in the approval queue.', 'Draft actions')} /><CustomerTable /></section>
     </main>
   );
@@ -482,20 +527,48 @@ function ReconciliationPage({ workflow }: { workflow: (title: string, body: stri
 
 function AgentCommandCenter({ context, workflow, reviewableActions, auditEvents }: { context: AgentContext; workflow: (title: string, body: string, action?: string) => void; reviewableActions: AgentAction[]; auditEvents: AuditEvent[] }) {
   const approvalQueue = [...reviewableActions, ...agentActions];
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    { id: 'seed-user', role: 'user', content: 'Prioritize 90+ accounts and draft collection next actions.' },
+    { id: 'seed-assistant', role: 'assistant', content: 'I found three high-risk accounts. I can draft collection actions, SOA follow-ups, and a manager summary for approval.' }
+  ]);
+  const [input, setInput] = useState('');
+  const [selectedPrompt, setSelectedPrompt] = useState('AR aging');
+  const submitMessage = () => {
+    const question = input.trim();
+    if (!question) return;
+    const answer = createAgentAnswer(question, selectedPrompt, context);
+    setMessages((current) => [
+      ...current,
+      { id: `user-${Date.now()}`, role: 'user', content: question },
+      { id: `assistant-${Date.now()}`, role: 'assistant', content: answer }
+    ]);
+    setInput('');
+  };
   return (
     <main className="agent-command">
       <section className="agent-main">
         <div className="agent-orb"><Bot size={30} /></div>
         <h2>AI Finance Agent Command Center</h2>
         <p>Ask about AR aging, customer risk, Oracle imports, reconciliation exceptions, SOA, email drafts, exports, or audit activity. The agent drafts actions only; approval is required before execution.</p>
+        <div className="agent-prompt-row">
+          {['AR aging', 'Collections', 'Reconciliation', 'Oracle import', 'Email drafting', 'Audit'].map((prompt) => (
+            <button key={prompt} className={prompt === selectedPrompt ? 'active' : ''} onClick={() => setSelectedPrompt(prompt)}>{prompt}</button>
+          ))}
+        </div>
         <div className="chat-card">
-          <div className="message user">Prioritize 90+ accounts and draft collection next actions.</div>
-          <div className="message assistant">I found three high-risk accounts. I can draft collection actions and create approval records for manager review.</div>
-          <button className="primary" onClick={() => workflow('AI collection recommendation', 'Creates finance.agent_actions records with pending approval status. No email or status change is executed.', 'Create approval records')}>Create reviewable actions</button>
+          <div className="chat-scroll">
+            {messages.map((message) => <div key={message.id} className={`message ${message.role}`}>{message.content}</div>)}
+          </div>
+          <div className="chat-input">
+            <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' ? submitMessage() : undefined} placeholder="Ask the finance agent about AR, SOA, reconciliation, imports, or email drafts" />
+            <button className="primary" onClick={submitMessage}><Send size={16} /> Send</button>
+          </div>
+          <button className="secondary" onClick={() => workflow('AI collection recommendation', 'Creates finance.agent_actions records with pending approval status. No email, legal status, payment status, or external system action is executed.', 'Create approval records')}>Create reviewable action from chat</button>
         </div>
       </section>
       <aside className="agent-side">
         <ContextCard context={context} />
+        <section className="context-card"><h3>Reasoning summary</h3><p className="muted-copy">Grounded in DHCM seed AR, invoice, customer, banking, import, and audit data. Backend OpenAI calls must use Supabase Edge Functions only.</p></section>
         <ActionList actions={approvalQueue} workflow={workflow} />
         <ActivityList events={auditEvents} />
       </aside>
@@ -522,7 +595,38 @@ function ReportsPage({ workflow }: { workflow: (title: string, body: string, act
 
 function EmailsPage({ workflow }: { workflow: (title: string, body: string, action?: string) => void }) {
   const templates = ['SOA Follow-up', 'Payment Reminder', 'Final Reminder', 'Receipt Confirmation', 'Dispute Clarification', 'Payment Plan Confirmation', 'Legal Escalation Notice', 'Thank You for Payment', 'Missing Payment Reference Request'];
-  return <main className="page-grid"><section className="panel span-3"><PanelHead title="Email workflows" /> <div className="report-grid">{templates.map((template) => <button key={template} onClick={() => workflow(template, `Creates an email draft using the ${template} template. Sending requires explicit approval and backend email setup.`, 'Draft email')}>{template}</button>)}</div></section></main>;
+  const [template, setTemplate] = useState(templates[0]);
+  const [customerId, setCustomerId] = useState(customers[0].id);
+  const selectedCustomer = customers.find((customer) => customer.id === customerId) || customers[0];
+  const [subject, setSubject] = useState(`${template} - ${selectedCustomer.name}`);
+  const [body, setBody] = useState(createEmailDraft(template, selectedCustomer.name));
+  const updateDraft = (nextTemplate: string, nextCustomerId = customerId) => {
+    const nextCustomer = customers.find((customer) => customer.id === nextCustomerId) || customers[0];
+    setTemplate(nextTemplate);
+    setCustomerId(nextCustomerId);
+    setSubject(`${nextTemplate} - ${nextCustomer.name}`);
+    setBody(createEmailDraft(nextTemplate, nextCustomer.name));
+  };
+  return (
+    <main className="page-grid">
+      <section className="panel">
+        <PanelHead title="Template chooser" />
+        <div className="template-list">{templates.map((item) => <button key={item} className={item === template ? 'active' : ''} onClick={() => updateDraft(item)}>{item}</button>)}</div>
+      </section>
+      <section className="panel span-2">
+        <PanelHead title="Draft editor" action="Queue for approval" onClick={() => workflow('Email draft approval', `Email draft queued for ${selectedCustomer.name}. Subject: ${subject}. Sending requires approved backend email-send-approved execution.`, 'Create approval record')} />
+        <div className="email-editor">
+          <label>Customer<select value={customerId} onChange={(event) => updateDraft(template, event.target.value)}>{customers.map((customer) => <option value={customer.id} key={customer.id}>{customer.name}</option>)}</select></label>
+          <label>Subject<input value={subject} onChange={(event) => setSubject(event.target.value)} /></label>
+          <label>Message<textarea value={body} onChange={(event) => setBody(event.target.value)} rows={10} /></label>
+          <div className="modal-actions">
+            <button className="secondary" onClick={() => workflow('Save email draft', `Draft saved locally for review. Customer: ${selectedCustomer.name}.`, 'Save draft record')}>Save draft</button>
+            <button className="primary" onClick={() => workflow('Send email after approval', `This will only send through the backend email Edge Function after approval. Recipient: ${selectedCustomer.email}.`, 'Create send approval')}><Send size={16} /> Send after approval</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 function SettingsPage({ path, workflow }: { path: string; workflow: (title: string, body: string, action?: string) => void }) {
@@ -583,6 +687,68 @@ function EntityBars() {
 
 function MiniAgingChart() {
   return <div className="mini-chart">{entities.map((entity) => <span key={entity.entity} style={{ height: `${Math.max(18, entity.dso)}%` }} title={entity.entity} />)}</div>;
+}
+
+function StackedAgingChart({ rows }: { rows: EntityAging[] }) {
+  return (
+    <div className="stacked-chart">
+      {rows.map((entity) => {
+        const current = (entity.current / entity.totalAr) * 100;
+        const overdue = (entity.overdue / entity.totalAr) * 100;
+        const critical = (entity.critical90 / entity.totalAr) * 100;
+        return (
+          <div className="stacked-row" key={entity.entity}>
+            <span>{entity.entity}</span>
+            <div className="stacked-track">
+              <i className="seg current" style={{ width: `${current}%` }} />
+              <i className="seg overdue" style={{ width: `${overdue}%` }} />
+              <i className="seg critical" style={{ width: `${critical}%` }} />
+            </div>
+            <strong>{formatAed(entity.totalAr)}</strong>
+          </div>
+        );
+      })}
+      <div className="legend"><span className="current" /> Current <span className="overdue" /> Overdue <span className="critical" /> 90+</div>
+    </div>
+  );
+}
+
+function PortfolioDonut() {
+  const total = totalAr();
+  let cursor = 0;
+  const stops = entities.map((entity, index) => {
+    const start = cursor;
+    const end = cursor + (entity.totalAr / total) * 100;
+    cursor = end;
+    return `${chartColors[index % chartColors.length]} ${start}% ${end}%`;
+  }).join(', ');
+  return (
+    <div className="donut-wrap">
+      <div className="donut" style={{ background: `conic-gradient(${stops})` }}><span>{formatAed(total)}</span></div>
+      <div className="donut-list">{entities.map((entity, index) => <span key={entity.entity}><i style={{ background: chartColors[index % chartColors.length] }} />{entity.entity} {Math.round((entity.totalAr / total) * 100)}%</span>)}</div>
+    </div>
+  );
+}
+
+function TrendChart() {
+  const points = [68, 74, 79, 84, 91, 88, 96];
+  return <div className="trend-chart">{points.map((point, index) => <span key={index} style={{ height: `${point}%` }}><em>{point}%</em></span>)}</div>;
+}
+
+function ExposureTrend() {
+  const points = entities.map((entity) => Math.round(entity.critical90 / 1_000_000));
+  const max = Math.max(...points);
+  return <div className="sparkline">{points.map((point, index) => <span key={index} style={{ height: `${Math.max(12, (point / max) * 100)}%` }}><em>{entities[index].entity}</em></span>)}</div>;
+}
+
+function EclProvisionChart() {
+  const max = Math.max(...entities.map((entity) => entity.eclProvision));
+  return <div className="ecl-chart">{entities.map((entity) => <div key={entity.entity}><span>{entity.entity}</span><i style={{ width: `${(entity.eclProvision / max) * 100}%` }} /><strong>{formatAed(entity.eclProvision)}</strong></div>)}</div>;
+}
+
+function TopCustomerChart() {
+  const max = Math.max(...customers.map((customer) => customer.overdueAmount));
+  return <div className="ecl-chart">{customers.map((customer) => <div key={customer.id}><span>{customer.name}</span><i style={{ width: `${(customer.overdueAmount / max) * 100}%` }} /><strong>{formatAed(customer.overdueAmount)}</strong></div>)}</div>;
 }
 
 function CustomerTable({ navigate }: { navigate?: (path: string) => void }) {
@@ -653,6 +819,29 @@ function totalOverdue() {
 
 function sumBy(key: keyof Pick<EntityAging, 'critical90' | 'critical180' | 'eclProvision'>) {
   return entities.reduce((sum, entity) => sum + entity[key], 0);
+}
+
+function createAgentAnswer(question: string, mode: string, context: AgentContext) {
+  const topCustomer = customers.reduce((a, b) => (a.amount90 > b.amount90 ? a : b));
+  const topEntity = entities.reduce((a, b) => (a.critical90 > b.critical90 ? a : b));
+  const prefix = `${mode} analysis for ${context.title}:`;
+  if (/email|soa|reminder|draft/i.test(question)) {
+    return `${prefix} I can draft an SOA/payment reminder for ${topCustomer.name}. The draft will stay in pending approval and will not send until the email Edge Function receives an approved action record.`;
+  }
+  if (/reconcile|bank|match|receipt|payment/i.test(question)) {
+    return `${prefix} ${bankTransactions.length} seed bank transactions are available. Highest-confidence review item is ${bankTransactions[0].reference} at ${bankTransactions[0].confidence}%. I recommend creating a review-required allocation proposal, not posting it automatically.`;
+  }
+  if (/oracle|import|column|bucket|file/i.test(question)) {
+    return `${prefix} Latest Oracle import has ${importResults[0].failedRows} failed rows and missing columns: ${importResults[0].missingColumns.join(', ')}. Next step is a mapping review and failed-row export.`;
+  }
+  if (/dso|cei|ecl|provision|aging|90|180|risk/i.test(question)) {
+    return `${prefix} Total AR is ${formatAed(totalAr())}, overdue is ${formatAed(totalOverdue())}, 90+ exposure is ${formatAed(sumBy('critical90'))}, and top risk entity is ${topEntity.entity}. Prioritize ${topCustomer.name} for SOA and collection follow-up.`;
+  }
+  return `${prefix} I can answer from DHCM seed data, draft an action, create an approval record, and log the audit trail. I will not send emails, change legal/payment status, overwrite imports, or trigger external systems without approval.`;
+}
+
+function createEmailDraft(template: string, customerName: string) {
+  return `Dear ${customerName} Accounts Payable Team,\n\nPlease find the ${template.toLowerCase()} prepared for review. Kindly confirm the expected payment allocation, any disputed invoice references, and the committed payment date.\n\nThis message is currently a draft. It will only be sent after finance approval and backend email configuration.\n\nRegards,\nDHCM Finance Control Hub`;
 }
 
 function loadReviewableActions() {

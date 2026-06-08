@@ -18,7 +18,9 @@ body {
 }
 
 button,
-input {
+input,
+textarea,
+select {
   font: inherit;
 }
 
@@ -572,7 +574,8 @@ tbody tr {
 .quick-actions,
 .sheet-grid,
 .report-grid,
-.integration-grid {
+.integration-grid,
+.agent-prompt-row {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -587,6 +590,156 @@ tbody tr {
 .filter-bar .active {
   background: rgba(36, 193, 201, 0.24);
   color: #ffffff;
+}
+
+.stacked-chart {
+  display: grid;
+  gap: 14px;
+}
+
+.stacked-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 112px;
+  gap: 12px;
+  align-items: center;
+}
+
+.stacked-track {
+  display: flex;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(143, 160, 186, 0.14);
+}
+
+.seg {
+  display: block;
+  min-width: 2px;
+}
+
+.current,
+.legend .current {
+  background: #38d996;
+}
+
+.overdue,
+.legend .overdue {
+  background: #ffcf70;
+}
+
+.critical,
+.legend .critical {
+  background: #ff8d8d;
+}
+
+.legend {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #9fb0ca;
+  font-size: 12px;
+}
+
+.legend span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.donut-wrap {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.donut {
+  display: grid;
+  width: 150px;
+  height: 150px;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.donut span {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  border-radius: 50%;
+  background: #101c30;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.donut-list {
+  display: grid;
+  gap: 8px;
+  color: #c9d6ea;
+}
+
+.donut-list span {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.donut-list i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.trend-chart,
+.sparkline {
+  display: flex;
+  height: 190px;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.trend-chart span,
+.sparkline span {
+  position: relative;
+  flex: 1;
+  min-height: 12px;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(180deg, #24c1c9, #132c58);
+}
+
+.trend-chart em,
+.sparkline em {
+  position: absolute;
+  top: -22px;
+  left: 50%;
+  color: #9fb0ca;
+  font-size: 11px;
+  font-style: normal;
+  transform: translateX(-50%);
+}
+
+.ecl-chart {
+  display: grid;
+  gap: 12px;
+}
+
+.ecl-chart div {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr 110px;
+  gap: 10px;
+  align-items: center;
+}
+
+.ecl-chart i {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #24c1c9, #ffcf70);
 }
 
 .customer-hero {
@@ -691,6 +844,32 @@ tbody tr {
   background: rgba(0, 0, 0, 0.2);
 }
 
+.agent-prompt-row {
+  margin: 18px 0 0;
+}
+
+.agent-prompt-row button,
+.template-list button {
+  min-height: 34px;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #c9d6ea;
+}
+
+.agent-prompt-row .active,
+.template-list .active {
+  background: rgba(36, 193, 201, 0.22);
+  color: #ffffff;
+}
+
+.chat-scroll {
+  display: grid;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .message {
   max-width: 76%;
   margin-bottom: 12px;
@@ -705,6 +884,46 @@ tbody tr {
 
 .message.assistant {
   background: rgba(255, 255, 255, 0.08);
+}
+
+.chat-input {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.chat-input input,
+.email-editor input,
+.email-editor textarea,
+.email-editor select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid rgba(143, 160, 186, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.email-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.email-editor label {
+  display: grid;
+  gap: 7px;
+  color: #c8d4e6;
+}
+
+.email-editor select option {
+  color: #0f1b2f;
+}
+
+.template-list {
+  display: grid;
+  gap: 9px;
 }
 
 .agent-side {
@@ -784,6 +1003,24 @@ tbody tr {
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+}
+
+.form-error {
+  margin: 0;
+  color: #ff9b9b;
+  font-weight: 800;
+}
+
+.security-note {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  border: 1px solid rgba(36, 193, 201, 0.22);
+  border-radius: 8px;
+  padding: 10px;
+  color: #b8c5d8;
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .auth-panel select option {
