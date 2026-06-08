@@ -13,8 +13,9 @@
 1. Review SQL under `supabase/migrations`.
 2. Apply migrations to a reviewed Supabase project.
 3. Apply `supabase/seed.sql` for DHCM seed references.
-4. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the frontend.
+4. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` for the frontend.
 5. Keep `SUPABASE_SERVICE_ROLE_KEY` only in backend or Supabase Edge Function secrets.
+6. If the `finance` schema is exposed through Supabase Data API settings, keep RLS enabled and verify `authenticated` role grants before enabling live reads.
 
 ## Edge Functions
 
