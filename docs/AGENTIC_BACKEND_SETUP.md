@@ -9,7 +9,11 @@ The DHCM Finance Control Hub agent can observe, analyze, draft, and queue action
 Set these only as Supabase Edge Function secrets:
 
 ```text
+EMERGENT_LLM_API_KEY
+EMERGENT_LLM_BASE_URL
+EMERGENT_LLM_MODEL
 OPENAI_API_KEY
+OPENAI_BASE_URL
 OPENAI_MODEL
 PERPLEXITY_API_KEY
 PERPLEXITY_MODEL
@@ -20,11 +24,13 @@ SMTP_USER
 SMTP_PASS
 ```
 
-Do not create `VITE_OPENAI_API_KEY` or `VITE_PERPLEXITY_API_KEY`. Vite exposes `VITE_` variables to the browser.
+Do not create `VITE_OPENAI_API_KEY`, `VITE_PERPLEXITY_API_KEY`, or `VITE_EMERGENT_LLM_API_KEY`. Vite exposes `VITE_` variables to the browser.
 
 ## Supabase Commands
 
 ```powershell
+supabase secrets set EMERGENT_LLM_API_KEY=your_private_universal_key
+supabase secrets set EMERGENT_LLM_BASE_URL=https://integrations.emergentagent.com/llm
 supabase secrets set OPENAI_API_KEY=your_openai_key
 supabase secrets set OPENAI_MODEL=gpt-4.1-mini
 supabase secrets set PERPLEXITY_API_KEY=your_perplexity_key

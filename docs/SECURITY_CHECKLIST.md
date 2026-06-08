@@ -2,7 +2,7 @@
 
 ## Frontend
 
-- No OpenAI, Perplexity, SMTP, Oracle, banking, or Supabase service-role secrets in frontend code.
+- No OpenAI, Emergent universal LLM, Perplexity, SMTP, Oracle, banking, or Supabase service-role secrets in frontend code.
 - Only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are allowed in the browser.
 - Passwords are not stored in localStorage.
 - All destructive actions are approval-gated.
@@ -11,6 +11,7 @@
 
 - Supabase Edge Functions require JWT verification when deployed.
 - Store secrets with Supabase secrets, not source files.
+- Store `EMERGENT_LLM_API_KEY`, `OPENAI_API_KEY`, and `PERPLEXITY_API_KEY` only in Supabase Edge Function secrets.
 - Log every approved action in `finance.audit_logs`.
 - Use `finance.agent_action_approvals` before email, reconciliation, import overwrite, legal status, or payment updates.
 

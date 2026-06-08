@@ -60,7 +60,44 @@ const appRoutes = [
   ['Audit', '/app/audit', Lock]
 ] as const;
 
-const chartColors = ['#24c1c9', '#38d996', '#ffcf70', '#8fb7ff', '#ff8d8d'];
+const navGroups = [
+  {
+    label: 'Overview',
+    routes: [['Dashboard', '/app/dashboard', Activity]]
+  },
+  {
+    label: 'Core Operations',
+    routes: [
+      ['AR Control', '/ar', CircleDollarSign],
+      ['Customers', '/app/customers', Users],
+      ['Emails', '/app/emails', Mail]
+    ]
+  },
+  {
+    label: 'Data Hub',
+    routes: [
+      ['Imports', '/app/imports', Upload],
+      ['Banking', '/app/banking', Landmark],
+      ['Files', '/app/files', FolderOpen],
+      ['Exports', '/app/exports', FileSpreadsheet]
+    ]
+  },
+  {
+    label: 'Strategy',
+    routes: [
+      ['Reconciliation', '/app/reconciliation', RefreshCw],
+      ['Agent', '/app/agent', Bot],
+      ['Reports', '/app/reports', ClipboardList],
+      ['Audit', '/app/audit', Lock]
+    ]
+  },
+  {
+    label: 'Administration',
+    routes: [['Settings', '/app/settings', ShieldCheck]]
+  }
+] as const;
+
+const chartColors = ['#c5a059', '#38d996', '#8fb7ff', '#f0d98d', '#ff8d8d'];
 
 export function App() {
   const [path, setPath] = useState(window.location.pathname);
@@ -128,7 +165,8 @@ export function App() {
     const nextAudit = [auditEvent, ...auditEvents].slice(0, 20);
     setCurrentUser(session);
     setAuditEvents(nextAudit);
-    localStorage.setItem('dhcm.userSession', JSON.stringify(session));
+    sessionStorage.setItem('dhcm.userSession', JSON.stringify(session));
+    localStorage.removeItem('dhcm.userSession');
     localStorage.setItem('dhcm.auditEvents', JSON.stringify(nextAudit));
     navigate('/app/dashboard');
   };
@@ -144,6 +182,7 @@ export function App() {
     setCurrentUser(null);
     setAuditEvents(nextAudit);
     localStorage.removeItem('dhcm.userSession');
+    sessionStorage.removeItem('dhcm.userSession');
     localStorage.setItem('dhcm.auditEvents', JSON.stringify(nextAudit));
     navigate('/login');
   };
@@ -249,10 +288,15 @@ function AppLayout({ path, navigate, user, onLogout, children }: { path: string;
           <span><strong>DHCM</strong><small>Control Hub</small></span>
         </button>
         <nav className="side-nav">
-          {appRoutes.map(([label, route, Icon]) => (
-            <button key={route} className={path === route || (route === '/app/customers' && path.startsWith('/app/customers')) ? 'active' : ''} onClick={() => navigate(route)}>
-              <Icon size={17} /> {label}
-            </button>
+          {navGroups.map((group) => (
+            <section className="nav-group" key={group.label}>
+              <span>{group.label}</span>
+              {group.routes.map(([label, route, Icon]) => (
+                <button key={route} className={path === route || (route === '/app/customers' && path.startsWith('/app/customers')) ? 'active' : ''} onClick={() => navigate(route)}>
+                  <Icon size={17} /> {label}
+                </button>
+              ))}
+            </section>
           ))}
         </nav>
       </aside>
@@ -699,11 +743,21 @@ function AuditPage({ auditEvents }: { auditEvents: AuditEvent[] }) {
 }
 
 function FloatingAgent({ context, workflow }: { context: AgentContext; workflow: (title: string, body: string, action?: string) => void }) {
+  const [open, setOpen] = useState(false);
   return (
-    <aside className="floating-agent">
-      <div className="agent-header"><Bot size={18} /><strong>Finance Agent</strong><span>{context.title}</span></div>
-      <p>I can analyze this page context and draft reviewable actions.</p>
-      <button onClick={() => workflow('AI agent draft', `Context captured for ${context.title}. The backend ai-chat Edge Function will store the question, context snapshot, response, and proposed action.`, 'Open draft preview')}>Ask agent</button>
+    <aside className={`floating-agent ${open ? 'open' : 'collapsed'}`}>
+      <button className="agent-tab" onClick={() => setOpen(!open)}>
+        <Bot size={18} />
+        <span>Finance Agent</span>
+      </button>
+      <div className="agent-drawer">
+        <div className="agent-header"><Bot size={18} /><strong>Finance Agent</strong><span>{context.title}</span></div>
+        <p>I can monitor this page context, draft actions, and queue approval records. Nothing executes until you approve it.</p>
+        <div className="drawer-actions">
+          <button onClick={() => workflow('AI agent draft', `Context captured for ${context.title}. The backend ai-chat Edge Function will store the question, context snapshot, response, and proposed action.`, 'Open draft preview')}>Draft next action</button>
+          <button onClick={() => workflow('Autonomous monitor setup', `Create a reviewable monitor for ${context.title}. The agent can observe AR/import/reconciliation changes and draft recommendations only.`, 'Create monitor draft')}>Create monitor</button>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -908,12 +962,22 @@ function loadAuditEvents() {
 }
 
 function loadUserSession() {
-  return loadJson<UserSession | null>('dhcm.userSession', null);
+  localStorage.removeItem('dhcm.userSession');
+  return loadSessionJson<UserSession | null>('dhcm.userSession', null);
 }
 
 function loadJson<T>(key: string, fallback: T) {
   try {
     const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function loadSessionJson<T>(key: string, fallback: T) {
+  try {
+    const raw = sessionStorage.getItem(key);
     return raw ? JSON.parse(raw) as T : fallback;
   } catch {
     return fallback;

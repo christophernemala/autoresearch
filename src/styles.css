@@ -1,8 +1,8 @@
 :root {
   color-scheme: dark;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #08111f;
-  color: #eef4ff;
+  background: #0f172a;
+  color: #f8fafc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
@@ -14,7 +14,7 @@
 body {
   margin: 0;
   min-width: 320px;
-  background: #08111f;
+  background: #0f172a;
 }
 
 button,
@@ -82,7 +82,7 @@ button {
   height: 38px;
   place-items: center;
   border-radius: 10px;
-  background: #11244a;
+  background: linear-gradient(145deg, #0f172a, #1e293b);
   color: #ffffff;
   font-weight: 900;
 }
@@ -128,13 +128,13 @@ td span,
 }
 
 .primary {
-  background: #24c1c9;
-  color: #06101f;
-  box-shadow: 0 18px 46px rgba(36, 193, 201, 0.22);
+  background: linear-gradient(135deg, #f0d98d, #c5a059);
+  color: #0f172a;
+  box-shadow: 0 18px 46px rgba(197, 160, 89, 0.22);
 }
 
 .nav-launch {
-  background: #11244a;
+  background: #0f172a;
   color: #ffffff;
   box-shadow: 0 16px 34px rgba(17, 36, 74, 0.18);
 }
@@ -167,7 +167,7 @@ td span,
   grid-template-columns: minmax(0, 1fr) minmax(420px, 0.9fr);
   gap: 48px;
   padding: 112px 15vw 104px;
-  background: linear-gradient(120deg, #112143 0%, #193563 46%, #0d7276 100%);
+  background: linear-gradient(120deg, #0f172a 0%, #17213a 50%, #203047 100%);
   color: #ffffff;
 }
 
@@ -180,7 +180,7 @@ td span,
 }
 
 .hero-copy h1 em {
-  color: #22c3cf;
+  color: #c5a059;
   font-style: normal;
 }
 
@@ -400,13 +400,13 @@ td span,
   display: grid;
   min-height: 100vh;
   grid-template-columns: 260px minmax(0, 1fr);
-  background: radial-gradient(circle at 82% 0%, rgba(36, 193, 201, 0.16), transparent 34%), #08111f;
+  background: radial-gradient(circle at 82% 0%, rgba(197, 160, 89, 0.15), transparent 34%), #0f172a;
 }
 
 .sidebar {
   padding: 24px 18px;
   border-right: 1px solid rgba(143, 160, 186, 0.16);
-  background: rgba(7, 15, 29, 0.82);
+  background: rgba(6, 12, 26, 0.92);
 }
 
 .console-brand {
@@ -415,7 +415,21 @@ td span,
 
 .side-nav {
   display: grid;
+  gap: 16px;
+}
+
+.nav-group {
+  display: grid;
   gap: 7px;
+}
+
+.nav-group > span {
+  padding: 4px 10px;
+  color: #c5a059;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .side-nav button {
@@ -432,8 +446,8 @@ td span,
 
 .side-nav button.active {
   color: #ffffff;
-  background: linear-gradient(90deg, rgba(36, 193, 201, 0.24), rgba(255, 255, 255, 0.07));
-  box-shadow: inset 2px 0 0 #24c1c9;
+  background: linear-gradient(90deg, rgba(197, 160, 89, 0.24), rgba(255, 255, 255, 0.07));
+  box-shadow: inset 2px 0 0 #c5a059;
 }
 
 .workspace {
@@ -1050,19 +1064,55 @@ tbody tr {
   right: 24px;
   bottom: 24px;
   z-index: 10;
-  width: 330px;
+  width: 360px;
+  pointer-events: none;
+}
+
+.agent-tab {
+  display: inline-flex;
+  width: auto;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(197, 160, 89, 0.28);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(15, 23, 42, 0.94);
+  color: #f8fafc;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  pointer-events: auto;
+}
+
+.agent-drawer {
+  display: none;
+  margin-top: 10px;
+  border: 1px solid rgba(197, 160, 89, 0.24);
+  border-radius: 14px;
   padding: 16px;
-  background: rgba(8, 17, 31, 0.94);
-  backdrop-filter: blur(16px);
+  background: rgba(15, 23, 42, 0.96);
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(18px);
+  pointer-events: auto;
+}
+
+.floating-agent.open .agent-drawer {
+  display: block;
 }
 
 .floating-agent p {
   color: #b8c5d8;
 }
 
-.floating-agent button {
+.drawer-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.drawer-actions button {
   width: 100%;
-  background: rgba(36, 193, 201, 0.18);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(197, 160, 89, 0.18);
   color: #ffffff;
 }
 
@@ -1080,7 +1130,7 @@ tbody tr {
   display: grid;
   min-height: 100vh;
   place-items: center;
-  background: linear-gradient(135deg, #08111f, #11244a);
+  background: linear-gradient(135deg, #0f172a, #1e293b);
 }
 
 .auth-panel {

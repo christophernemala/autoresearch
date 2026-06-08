@@ -17,9 +17,9 @@ export const corsHeaders = {
 };
 
 export function requireOpenAiKey() {
-  const key = Deno.env.get('OPENAI_API_KEY');
+  const key = Deno.env.get('EMERGENT_LLM_API_KEY') ?? Deno.env.get('OPENAI_API_KEY');
   if (!key) {
-    return { ok: false as const, response: json({ error: 'OPENAI_API_KEY is not configured for this Supabase Edge Function.' }, 503) };
+    return { ok: false as const, response: json({ error: 'EMERGENT_LLM_API_KEY or OPENAI_API_KEY is not configured for this Supabase Edge Function.' }, 503) };
   }
   return { ok: true as const, key };
 }
@@ -50,8 +50,9 @@ export async function safeAgentResponse(functionName: AgentFunctionName, request
   const pageContext = payload.pageContext ?? {};
   const userQuestion = payload.message ?? payload.prompt ?? '';
   const prompt = promptForFunction(functionName);
-  const model = Deno.env.get('OPENAI_MODEL') ?? 'gpt-4.1-mini';
-  const openAiResponse = await fetch('https://api.openai.com/v1/responses', {
+  const model = Deno.env.get('EMERGENT_LLM_MODEL') ?? Deno.env.get('OPENAI_MODEL') ?? 'gpt-4.1-mini';
+  const baseUrl = (Deno.env.get('EMERGENT_LLM_BASE_URL') ?? Deno.env.get('OPENAI_BASE_URL') ?? 'https://api.openai.com/v1').replace(/\/$/, '');
+  const openAiResponse = await fetch(`${baseUrl}/responses`, {
     method: 'POST',
     headers: {
       authorization: `Bearer ${keyCheck.key}`,
