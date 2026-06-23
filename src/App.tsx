@@ -11,6 +11,7 @@ import {
   FileSpreadsheet,
   Filter,
   Gauge,
+  Inbox,
   Landmark,
   Layers3,
   PanelRightOpen,
@@ -60,7 +61,7 @@ type Page = 'dashboard' | 'receivables' | 'collections' | 'allocation' | 'disput
 type SortKey = 'amountDue' | 'daysLate' | 'customerName' | 'dueDate';
 
 const navItems: { id: Page; label: string; icon: LucideIcon }[] = [
-  { id: 'dashboard', label: 'Executive', icon: Gauge },
+  { id: 'dashboard', label: 'Command Center', icon: Gauge },
   { id: 'receivables', label: 'Receivables', icon: ReceiptText },
   { id: 'collections', label: 'Collections', icon: CalendarClock },
   { id: 'allocation', label: 'Allocation', icon: WalletCards },
@@ -171,11 +172,29 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
             <p>{copy.description}</p>
           </div>
           <div className="topbar-actions">
-            <StatusBadge tone="success">Build passing</StatusBadge>
-            <StatusBadge tone="info">AED reporting</StatusBadge>
-            <StatusBadge tone="warning">Seed data</StatusBadge>
+            <button className="toolbar-button"><Inbox size={15} /> Import</button>
+            <button className="toolbar-button"><Download size={15} /> Export</button>
+            <button className="toolbar-button primary">Review queue</button>
           </div>
         </header>
+        <div className="workspace-bar">
+          <div>
+            <span>Open period</span>
+            <strong>Jun 2026 close</strong>
+          </div>
+          <div>
+            <span>Currency</span>
+            <strong>AED</strong>
+          </div>
+          <div>
+            <span>Source</span>
+            <strong>Local finance data</strong>
+          </div>
+          <div>
+            <span>Mode</span>
+            <strong>Review only</strong>
+          </div>
+        </div>
         <AnimatePresence mode="wait">
           <motion.div key={page} {...pageTransition}>
             {children}
@@ -187,7 +206,7 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
 }
 
 export function App() {
-  const [page, setPage] = useState<Page>('dashboard');
+  const [page, setPage] = useState<Page>('receivables');
   const [query, setQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -394,7 +413,7 @@ function ReceivablesPage(props: {
         <MetricPill label="Records" value={formatNumber(props.rows.length)} />
       </div>
 
-      <SectionCard title="Invoice Aging Register" kicker="Sticky header, right-aligned amounts, sortable operating view">
+      <SectionCard title="Aging Work Queue" kicker="Invoice-level operating register">
         {props.rows.length === 0 ? (
           <EmptyState title="No receivables match these filters" body="Reset filters or broaden the search to review the full aging population." action={<button onClick={props.resetFilters}>Reset filters</button>} />
         ) : (
