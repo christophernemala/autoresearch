@@ -1,53 +1,859 @@
 import { useMemo, useState } from 'react';
-import { Activity, AlertTriangle, ArrowRight, BarChart3, Bot, BrainCircuit, CheckCircle2, Clock3, Database, FileSpreadsheet, Filter, Gauge, Landmark, LockKeyhole, MessageSquareText, Play, RefreshCcw, Search, ShieldCheck, Sparkles, Table2, UploadCloud, WalletCards, Workflow, XCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+import {
+  AlertTriangle,
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarClock,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardCheck,
+  Download,
+  FileSpreadsheet,
+  Filter,
+  Gauge,
+  Landmark,
+  Layers3,
+  PanelRightOpen,
+  ReceiptText,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  WalletCards,
+  X
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+  allocations,
+  collections as collectionSeed,
+  controls,
+  disputes,
+  entities,
+  receivables,
+  reportDefinitions,
+  treasuryPositions
+} from './data/dhcmSeed';
+import {
+  agingDistribution,
+  buildReports,
+  calculateExecutiveMetrics,
+  chartPercent,
+  downloadCsv,
+  formatAed,
+  formatDate,
+  formatNumber,
+  getMax,
+  treasuryTotals
+} from './lib/finance';
+import type {
+  AgingBucket,
+  AllocationReceipt,
+  CollectionAccount,
+  ControlItem,
+  DisputeCase,
+  Receivable,
+  RiskLevel,
+  TreasuryPosition
+} from './types';
 
-type Page = 'overview' | 'agents' | 'bank' | 'reconciliation' | 'bi' | 'audit' | 'settings';
-type AgentStatus = 'Ready' | 'Scheduled' | 'Demo Mode' | 'Needs Connection' | 'Paused';
-type MatchStatus = 'Matched' | 'Probable Match' | 'Review Required' | 'Unmatched Credit' | 'Duplicate';
-type Agent = { id: string; name: string; purpose: string; mode: 'Headless' | 'Interactive'; model: string; mcp: string[]; schedule: string; status: AgentStatus; icon: typeof Bot; accent: string; pipeline: string[]; guardrail: string };
-type BankTransaction = { id: string; txnDate: string; reference: string; narration: string; payer: string; amount: number; currency: string; account: string; status: MatchStatus; customer: string; invoice: string; confidence: number };
+type Page = 'dashboard' | 'receivables' | 'collections' | 'allocation' | 'disputes' | 'treasury' | 'controls' | 'reports' | 'settings';
+type SortKey = 'amountDue' | 'daysLate' | 'customerName' | 'dueDate';
 
-const agents: Agent[] = [
-  { id: 'bi', name: 'BI Report Generator', purpose: 'Runs weekly BI queries, creates executive insights, and prepares recap blocks with chart links.', mode: 'Headless', model: 'claude-sonnet-4-6', mcp: ['supabase', 'slack'], schedule: 'Monday 07:00 UTC', status: 'Scheduled', icon: BarChart3, accent: 'gold', pipeline: ['Fetch active BI queries', 'Validate result sets', 'Compute weekly deltas', 'Compose recap', 'Log run'], guardrail: 'Never invent metrics. Failed queries are skipped and logged.' },
-  { id: 'tax', name: 'Tax Prep Assistant', purpose: 'Categorizes transaction activity and flags deductible items for review.', mode: 'Interactive', model: 'claude-sonnet-4-6', mcp: ['stripe', 'brex', 'quickbooks'], schedule: 'On demand', status: 'Needs Connection', icon: FileSpreadsheet, accent: 'teal', pipeline: ['Confirm scope', 'Pull activity', 'Deduplicate records', 'Categorize expenses', 'Summarize review items'], guardrail: 'Low confidence items require confirmation.' },
-  { id: 'canny', name: 'Canny Feedback Clusterer', purpose: 'Clusters feedback into themes and prepares ticket updates for high-signal requests.', mode: 'Headless', model: 'claude-sonnet-4-6', mcp: ['canny', 'linear'], schedule: 'Every 6 hours', status: 'Demo Mode', icon: MessageSquareText, accent: 'pink', pipeline: ['Fetch feedback', 'Deduplicate', 'Cluster themes', 'Check existing tickets', 'Prepare updates'], guardrail: 'Read-only feedback. No more than 10 tickets per run.' },
-  { id: 'productboard', name: 'Productboard Insight Miner', purpose: 'Mines customer insights and produces a weekly PM brief.', mode: 'Headless', model: 'claude-sonnet-4-6', mcp: ['productboard'], schedule: 'Monday 08:00 UTC', status: 'Demo Mode', icon: BrainCircuit, accent: 'violet', pipeline: ['Fetch insights', 'Group by feature', 'Score themes', 'Extract red flags', 'Publish brief'], guardrail: 'Every insight must trace to a source record.' },
-  { id: 'plaid', name: 'Plaid Cashflow Analyst', purpose: 'Analyzes bank transactions, runway, recurring items, and customer paid amounts from daily statements.', mode: 'Interactive', model: 'claude-sonnet-4-6', mcp: ['plaid'], schedule: 'On demand or daily import', status: 'Ready', icon: WalletCards, accent: 'green', pipeline: ['Load statement', 'Normalize rows', 'Extract paid amounts', 'Match customer/invoice', 'Route exceptions'], guardrail: 'Every amount must trace to a bank row.' },
-  { id: 'metabase', name: 'Metabase Question Builder', purpose: 'Turns natural language analytics requests into SQL, chart choices, and saved cards.', mode: 'Interactive', model: 'claude-sonnet-4-6', mcp: ['metabase'], schedule: 'On demand', status: 'Needs Connection', icon: BarChart3, accent: 'blue', pipeline: ['Clarify', 'Discover schema', 'Draft SQL', 'Pick chart', 'Save after approval'], guardrail: 'SELECT-only SQL and explicit approval before save.' },
-  { id: 'mercury', name: 'Mercury Reconciler', purpose: 'Matches bank transactions to accounting invoices and flags mismatches.', mode: 'Headless', model: 'claude-sonnet-4-6', mcp: ['mercury', 'xero'], schedule: 'Daily 06:00 UTC', status: 'Paused', icon: RefreshCcw, accent: 'orange', pipeline: ['Fetch bank rows', 'Fetch invoices', 'Match', 'Classify', 'Report'], guardrail: 'Read-only reconciliation. Multi-match needs human review.' },
-  { id: 'sheets', name: 'Airtable / Sheets Agent', purpose: 'Finds rows, updates fields, and generates formulas with read-before-write controls.', mode: 'Interactive', model: 'claude-sonnet-4-6', mcp: ['airtable', 'google-sheets'], schedule: 'On demand', status: 'Needs Connection', icon: Table2, accent: 'cyan', pipeline: ['Classify intent', 'Read current rows', 'Confirm', 'Execute', 'Audit'], guardrail: 'Bulk changes require confirmation.' },
-  { id: 'analyst', name: 'Data Analyst', purpose: 'Loads, explores, visualizes, and answers questions from finance datasets.', mode: 'Interactive', model: 'claude-sonnet-4-6', mcp: ['amplitude'], schedule: 'On demand', status: 'Ready', icon: Activity, accent: 'indigo', pipeline: ['Load', 'Inspect', 'Clean', 'Analyze', 'Summarize'], guardrail: 'Always inspect data before computing.' }
+const navItems: { id: Page; label: string; icon: LucideIcon }[] = [
+  { id: 'dashboard', label: 'Executive', icon: Gauge },
+  { id: 'receivables', label: 'Receivables', icon: ReceiptText },
+  { id: 'collections', label: 'Collections', icon: CalendarClock },
+  { id: 'allocation', label: 'Allocation', icon: WalletCards },
+  { id: 'disputes', label: 'Disputes', icon: AlertTriangle },
+  { id: 'treasury', label: 'Treasury', icon: Landmark },
+  { id: 'controls', label: 'Controls', icon: ClipboardCheck },
+  { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
+  { id: 'settings', label: 'Settings', icon: SlidersHorizontal }
 ];
 
-const seedRows: BankTransaction[] = [
-  { id: 'BNK-001', txnDate: '2026-06-13', reference: 'INV-256010013000498', narration: 'NEFT CREDIT TECOM MGMT FEES INV 498', payer: 'TECOM Group', amount: 460320, currency: 'AED', account: 'ENBD Main AED', status: 'Matched', customer: 'TECOM Group', invoice: '256010013000498', confidence: 98 },
-  { id: 'BNK-002', txnDate: '2026-06-13', reference: 'PAY-LIMITLESS-BUND', narration: 'TRANSFER LIMITLESS LLC BUND WALL SETTLEMENT', payer: 'Limitless LLC', amount: 713664, currency: 'AED', account: 'ENBD Main AED', status: 'Probable Match', customer: 'Limitless LLC', invoice: 'PO-00000739', confidence: 84 },
-  { id: 'BNK-003', txnDate: '2026-06-13', reference: 'SSA-COACHING', narration: 'SUPER SPORTS ACADEMY PART PAYMENT', payer: 'Super Sports Academy', amount: 38568.85, currency: 'AED', account: 'Mashreq Collections', status: 'Matched', customer: 'Super Sports Academy', invoice: '22814', confidence: 93 },
-  { id: 'BNK-004', txnDate: '2026-06-13', reference: 'UNALLOC-8842', narration: 'CREDIT CUSTOMER PAYMENT NO INVOICE REF', payer: 'Unknown Payer', amount: 125000, currency: 'AED', account: 'ENBD Main AED', status: 'Review Required', customer: 'Review required', invoice: '-', confidence: 42 },
-  { id: 'BNK-005', txnDate: '2026-06-13', reference: 'MEYDAN-15006', narration: 'MEYDAN GROUP SETTLEMENT Q1 2023', payer: 'Meydan Group', amount: 600000, currency: 'AED', account: 'ENBD Main AED', status: 'Duplicate', customer: 'Meydan Group', invoice: '15006', confidence: 71 }
-];
+const pageCopy: Record<Page, { title: string; kicker: string; description: string }> = {
+  dashboard: {
+    title: 'Finance Control Hub',
+    kicker: 'Executive command view',
+    description: 'Receivables exposure, collection pressure, cash allocation, disputes, and month-end readiness in one operating view.'
+  },
+  receivables: {
+    title: 'Receivables Aging',
+    kicker: 'AR subledger control',
+    description: 'Invoice-level aging with risk, owner, category, and drilldown context for collection action.'
+  },
+  collections: {
+    title: 'Collections Workspace',
+    kicker: 'Daily operating queue',
+    description: 'Priority accounts, promise-to-pay, escalation, follow-up status, and draft-only customer actions.'
+  },
+  allocation: {
+    title: 'Cash Allocation',
+    kicker: 'Unapplied receipt control',
+    description: 'Suggested invoice matches and unidentified payments using transparent business-rule confidence.'
+  },
+  disputes: {
+    title: 'Dispute Center',
+    kicker: 'Blocked cash resolution',
+    description: 'Dispute age, owner, SLA status, linked invoice, amount blocked, and comments timeline.'
+  },
+  treasury: {
+    title: 'Treasury Visibility',
+    kicker: 'Operational cash view',
+    description: 'Expected collections, confirmed receipts, unallocated cash, pending bank confirmation, and entity cash forecast.'
+  },
+  controls: {
+    title: 'Audit & Controls',
+    kicker: 'Month-end readiness',
+    description: 'Control owners, evidence status, reconciliation readiness, provision review, and exception logs.'
+  },
+  reports: {
+    title: 'Reports',
+    kicker: 'Control pack outputs',
+    description: 'Aging, entity, category, 90+ matrix, collector, dispute, allocation, and month-end report views.'
+  },
+  settings: {
+    title: 'Source & Integration Boundaries',
+    kicker: 'Deployment-safe configuration',
+    description: 'Current source state and integration assumptions. External write actions remain disabled until real services are wired.'
+  }
+};
 
-function money(value: number) { return new Intl.NumberFormat('en-AE', { style: 'currency', currency: 'AED', maximumFractionDigits: 0 }).format(value); }
-function tone(status: AgentStatus | MatchStatus) { return status === 'Ready' || status === 'Matched' ? 'good' : status === 'Scheduled' || status === 'Probable Match' ? 'info' : status === 'Needs Connection' || status === 'Review Required' || status === 'Duplicate' ? 'warn' : 'muted'; }
-function score(row: Partial<BankTransaction>): BankTransaction { const text = `${row.narration || ''} ${row.reference || ''}`.toLowerCase(); const amount = Number(row.amount || 0); let customer = row.payer || 'Unknown Payer', invoice = '-', confidence = 35, status: MatchStatus = amount > 0 ? 'Review Required' : 'Unmatched Credit'; if (text.includes('tecom') || text.includes('256010013000498')) { customer = 'TECOM Group'; invoice = '256010013000498'; confidence = 98; status = 'Matched'; } else if (text.includes('limitless') || text.includes('bund')) { customer = 'Limitless LLC'; invoice = 'PO-00000739'; confidence = 84; status = 'Probable Match'; } else if (text.includes('super sports') || text.includes('22814')) { customer = 'Super Sports Academy'; invoice = '22814'; confidence = 93; status = 'Matched'; } else if (text.includes('meydan')) { customer = 'Meydan Group'; invoice = '15006'; confidence = 71; status = 'Duplicate'; } return { id: row.id || `UPL-${Date.now()}`, txnDate: row.txnDate || new Date().toISOString().slice(0, 10), reference: row.reference || '-', narration: row.narration || '-', payer: row.payer || customer, amount, currency: row.currency || 'AED', account: row.account || 'Manual Upload', status, customer, invoice, confidence }; }
+const pageTransition = {
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -6 },
+  transition: { duration: 0.22, ease: 'easeOut' }
+} as const;
 
-export function App() {
-  const [page, setPage] = useState<Page>('overview'); const [activeAgent, setActiveAgent] = useState(agents[4]); const [rows, setRows] = useState(seedRows); const [query, setQuery] = useState(''); const [status, setStatus] = useState('All'); const [audit, setAudit] = useState(['21st.dev-style finance command center loaded.', 'Daily bank statement matcher initialized in demo mode.']); const [messages, setMessages] = useState([{ role: 'agent', text: 'Demo runtime active. Connect backend credentials to run real managed agents.' }]); const [chat, setChat] = useState('');
-  const paidToday = useMemo(() => rows.filter((r) => r.amount > 0 && ['Matched', 'Probable Match'].includes(r.status)).reduce((s, r) => s + r.amount, 0), [rows]); const reviewCount = rows.filter((r) => ['Review Required', 'Duplicate', 'Probable Match'].includes(r.status)).length; const matchRate = Math.round((rows.filter((r) => r.status === 'Matched').length / rows.length) * 100); const filtered = rows.filter((r) => `${r.reference} ${r.narration} ${r.customer} ${r.payer}`.toLowerCase().includes(query.toLowerCase()) && (status === 'All' || r.status === status));
-  function upload(file?: File) { if (!file) return; const reader = new FileReader(); reader.onload = () => { const lines = String(reader.result || '').split(/\r?\n/).filter(Boolean).slice(1, 26); const imported = lines.map((line, i) => { const c = line.split(',').map((x) => x.trim()); return score({ id: `UPL-${Date.now()}-${i}`, txnDate: c[0], reference: c[1], narration: c[2], payer: c[3], amount: Number(c[4]), currency: c[5], account: c[6] }); }); setRows((current) => [...imported, ...current]); setAudit((a) => [`Imported ${imported.length} rows from ${file.name}.`, ...a]); setPage('bank'); }; reader.readAsText(file); }
-  function approve(id: string) { setRows((rs) => rs.map((r) => r.id === id ? { ...r, status: 'Matched', confidence: Math.max(r.confidence, 95) } : r)); setAudit((a) => [`Approved payment match for ${id}.`, ...a]); } function reject(id: string) { setRows((rs) => rs.map((r) => r.id === id ? { ...r, status: 'Review Required', customer: 'Review required', invoice: '-', confidence: 25 } : r)); setAudit((a) => [`Rejected match for ${id}; routed to review.`, ...a]); } function runAgent(agent: Agent) { setActiveAgent(agent); setPage('agents'); setAudit((a) => [`Demo run queued for ${agent.name}.`, ...a]); setMessages((m) => [...m, { role: 'agent', text: `${agent.name} is ready in demo mode. Live execution needs its MCP connections.` }]); } function send() { if (!chat.trim()) return; setMessages((m) => [...m, { role: 'user', text: chat }, { role: 'agent', text: `I can prepare this workflow. Connect ${activeAgent.mcp.join(', ')} and approve the tool action for live execution.` }]); setChat(''); }
-  return <div className="app-shell"><aside className="sidebar"><button className="brand" onClick={() => setPage('overview')}><span>D</span><div><strong>DHCM</strong><small>Agent Command Center</small></div></button><nav>{[['overview', Gauge], ['agents', Bot], ['bank', Landmark], ['reconciliation', Workflow], ['bi', BarChart3], ['audit', ShieldCheck], ['settings', LockKeyhole]].map(([id, Icon]) => <button key={id as string} className={page === id ? 'active' : ''} onClick={() => setPage(id as Page)}><Icon size={18} />{String(id)}</button>)}</nav><div className="sidebar-card"><ShieldCheck size={18} /><strong>Approval-first</strong><p>Every write or match action is routed through review.</p></div></aside><main className="main"><header className="topbar"><div><span>Demo runtime · Vercel/Vite</span><h1>Finance Agent Command Center</h1></div><div className="top-actions"><span className="pill good"><Database size={14}/>Supabase active</span><span className="pill warn">MCP pending</span><label className="upload"><UploadCloud size={16}/>Upload CSV<input hidden type="file" accept=".csv,.txt" onChange={(e) => upload(e.target.files?.[0])}/></label></div></header>{page === 'overview' && <Overview paidToday={paidToday} reviewCount={reviewCount} matchRate={matchRate} runAgent={runAgent} setPage={setPage}/>} {page === 'agents' && <Agents activeAgent={activeAgent} setActiveAgent={setActiveAgent} runAgent={runAgent} messages={messages} chat={chat} setChat={setChat} send={send}/>} {page === 'bank' && <Bank rows={filtered} query={query} setQuery={setQuery} status={status} setStatus={setStatus} approve={approve} reject={reject} upload={upload}/>} {page === 'reconciliation' && <Reconciliation rows={rows}/>} {page === 'bi' && <BI runAgent={runAgent}/>} {page === 'audit' && <Audit audit={audit}/>} {page === 'settings' && <Settings/>}<Footer/></main></div>;
+function toneForRisk(risk: RiskLevel) {
+  return risk === 'Critical' ? 'critical' : risk === 'High' ? 'warning' : risk === 'Medium' ? 'info' : 'success';
 }
 
-function Overview({ paidToday, reviewCount, matchRate, runAgent, setPage }: { paidToday: number; reviewCount: number; matchRate: number; runAgent: (a: Agent) => void; setPage: (p: Page) => void }) { return <motion.section initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} className="page-grid"><section className="hero-panel"><div><span className="eyebrow">21st.dev-inspired agent workspace</span><h2>Command center for AR, bank statement matching, BI, and managed finance agents.</h2><p>The app now models the attached UI and logic: agent cards, MCP chips, run panels, approval queues, audit logs, and customer paid amount extraction.</p><div className="hero-actions"><button className="primary" onClick={() => setPage('agents')}>Open agent fleet <ArrowRight size={16}/></button><button className="secondary" onClick={() => setPage('bank')}>Review payments</button></div></div><div className="agent-orbit">{agents.slice(0,5).map((a) => <button key={a.id} onClick={() => runAgent(a)}><a.icon size={18}/>{a.name}</button>)}</div></section><div className="kpi-grid"><Metric label="Customer paid today" value={money(paidToday)} tone="good"/><Metric label="Match rate" value={`${matchRate}%`} tone="info"/><Metric label="Review queue" value={`${reviewCount}`} tone="warn"/><Metric label="Agent templates" value={`${agents.length}`} tone="gold"/></div><section className="panel wide"><div className="panel-head"><div><span className="eyebrow">Agent fleet</span><h3>Templates mapped to finance workflows</h3></div><Sparkles size={18}/></div><div className="agent-grid">{agents.map((a) => <AgentCard key={a.id} agent={a} onOpen={() => runAgent(a)}/>)}</div></section></motion.section>; }
-function Metric({label,value,tone}:{label:string;value:string;tone:string}){return <div className={`metric ${tone}`}><span>{label}</span><strong>{value}</strong><em>Demo data</em></div>}
-function AgentCard({agent,onOpen}:{agent:Agent;onOpen:()=>void}){return <button className="agent-card" onClick={onOpen}><div className={`agent-icon ${agent.accent}`}><agent.icon size={20}/></div><div><strong>{agent.name}</strong><p>{agent.purpose}</p><div className="chips">{agent.mcp.map((m)=><span key={m}>{m}</span>)}</div></div><span className={`pill ${tone(agent.status)}`}>{agent.status}</span></button>}
-function Agents({activeAgent,setActiveAgent,runAgent,messages,chat,setChat,send}:{activeAgent:Agent;setActiveAgent:(a:Agent)=>void;runAgent:(a:Agent)=>void;messages:{role:string;text:string}[];chat:string;setChat:(v:string)=>void;send:()=>void}){return <section className="two-column"><div className="panel"><div className="panel-head"><div><span className="eyebrow">Agent catalog</span><h3>Managed-agent models</h3></div><Bot size={18}/></div><div className="agent-list">{agents.map((a)=><button key={a.id} className={activeAgent.id===a.id?'selected':''} onClick={()=>setActiveAgent(a)}><a.icon size={18}/><div><strong>{a.name}</strong><span>{a.mode} · {a.schedule}</span></div><span className={`pill ${tone(a.status)}`}>{a.status}</span></button>)}</div></div><div className="panel detail"><div className="detail-head"><div className={`agent-icon ${activeAgent.accent}`}><activeAgent.icon size={26}/></div><div><span className="eyebrow">{activeAgent.mode} · {activeAgent.model}</span><h2>{activeAgent.name}</h2><p>{activeAgent.purpose}</p></div></div><div className="chips">{activeAgent.mcp.map((m)=><span key={m}>{m}</span>)}</div><div className="tabs"><button>Chat / Run</button><button>Configuration</button><button>Logs</button><button>Permissions</button></div><div className="pipeline">{activeAgent.pipeline.map((s,i)=><div key={s}><span>{i+1}</span>{s}</div>)}</div><div className="guardrail"><ShieldCheck size={18}/><p>{activeAgent.guardrail}</p></div><div className="chat-box">{messages.map((m,i)=><div key={i} className={`bubble ${m.role}`}>{m.text}</div>)}</div><div className="chat-input"><input value={chat} onChange={(e)=>setChat(e.target.value)} onKeyDown={(e)=>e.key==='Enter'&&send()} placeholder={`Ask ${activeAgent.name}...`}/><button onClick={send}>Send</button><button className="secondary" onClick={()=>runAgent(activeAgent)}><Play size={15}/>Run</button></div></div></section>}
-function Bank({rows,query,setQuery,status,setStatus,approve,reject,upload}:{rows:BankTransaction[];query:string;setQuery:(v:string)=>void;status:string;setStatus:(v:string)=>void;approve:(id:string)=>void;reject:(id:string)=>void;upload:(f?:File)=>void}){return <section className="panel wide"><div className="panel-head"><div><span className="eyebrow">Daily bank statement</span><h3>Customer paid amount extraction</h3></div><label className="upload small"><UploadCloud size={15}/>Upload<input hidden type="file" accept=".csv,.txt" onChange={(e)=>upload(e.target.files?.[0])}/></label></div><div className="filters"><div><Search size={16}/><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search reference, payer, customer..."/></div><div><Filter size={16}/><select value={status} onChange={(e)=>setStatus(e.target.value)}>{['All','Matched','Probable Match','Review Required','Unmatched Credit','Duplicate'].map((s)=><option key={s}>{s}</option>)}</select></div></div><div className="table-wrap"><table><thead><tr><th>Date</th><th>Reference</th><th>Narration</th><th>Payer</th><th>Amount</th><th>Status</th><th>Customer</th><th>Invoice</th><th>Confidence</th><th>Review</th></tr></thead><tbody>{rows.map((r)=><tr key={r.id}><td>{r.txnDate}</td><td>{r.reference}</td><td>{r.narration}</td><td>{r.payer}</td><td>{money(r.amount)}</td><td><span className={`pill ${tone(r.status)}`}>{r.status}</span></td><td>{r.customer}</td><td>{r.invoice}</td><td><div className="confidence"><span style={{width:`${r.confidence}%`}}/>{r.confidence}%</div></td><td><button className="icon" onClick={()=>approve(r.id)}><CheckCircle2 size={15}/></button><button className="icon danger" onClick={()=>reject(r.id)}><XCircle size={15}/></button></td></tr>)}</tbody></table></div><p className="hint">CSV format: txnDate, reference, narration, payer, amount, currency, account.</p></section>}
-function Reconciliation({rows}:{rows:BankTransaction[]}){const groups=rows.reduce<Record<string,number>>((a,r)=>({...a,[r.status]:(a[r.status]||0)+r.amount}),{});return <section className="page-grid"><div className="panel wide"><div className="panel-head"><div><span className="eyebrow">Reconciliation</span><h3>Bank-to-invoice exception control</h3></div><Workflow size={18}/></div><div className="recon-grid">{Object.entries(groups).map(([s,a])=><div key={s}><span className={`pill ${tone(s as MatchStatus)}`}>{s}</span><strong>{money(a)}</strong><p>Amount by match classification.</p></div>)}</div></div></section>}
-function BI({runAgent}:{runAgent:(a:Agent)=>void}){return <section className="panel wide"><div className="panel-head"><div><span className="eyebrow">BI Report Generator</span><h3>Weekly executive recap</h3></div><button onClick={()=>runAgent(agents[0])}><Play size={15}/>Run demo</button></div><div className="report-layout"><div><h4>Revenue</h4><p>Matched cash is visible from bank statement rows.</p></div><div><h4>Operations</h4><p>Review queue highlights missing invoice references.</p></div><div><h4>Risk</h4><p>Duplicates and ambiguous payers need human approval.</p></div></div></section>}
-function Audit({audit}:{audit:string[]}){return <section className="panel wide"><div className="panel-head"><div><span className="eyebrow">Audit</span><h3>Control log</h3></div><Clock3 size={18}/></div><div className="timeline">{audit.map((a,i)=><div key={i}><span>{new Date().toISOString().slice(0,10)}</span><p>{a}</p></div>)}</div></section>}
-function Settings(){return <section className="page-grid"><div className="panel wide"><div className="panel-head"><div><span className="eyebrow">Connections</span><h3>Live execution requirements</h3></div><AlertTriangle size={18}/></div><div className="settings-grid">{['Supabase','Anthropic agents','Slack','Plaid','Metabase','Google Sheets','Airtable','Productboard','Mercury','Xero'].map((x,i)=><div key={x}><strong>{x}</strong><span className={`pill ${i===0?'good':'warn'}`}>{i===0?'Project found':'Needs setup'}</span></div>)}</div></div></section>}
-function Footer(){return <footer className="footer"><div><strong>DHCM Finance Agent Command Center</strong><span>Vite compatible · Supabase ready · Approval-first automation</span></div><div>{['Product','Operations','Security','Resources','Legal'].map((x)=><button key={x}>{x}</button>)}</div></footer>}
+function isCurrencyReportKey(key: string) {
+  const normalized = key.toLowerCase();
+  return ['amount', 'exposure', 'overdue', 'total', 'confirmed', 'forecast', 'unallocated', 'pending'].some((token) => normalized.includes(token));
+}
+
+function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Page) => void; children: React.ReactNode }) {
+  const copy = pageCopy[page];
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <button className="brand" onClick={() => setPage('dashboard')} aria-label="Open executive dashboard">
+          <span>DH</span>
+          <div>
+            <strong>DHCM</strong>
+            <small>Finance Control</small>
+          </div>
+        </button>
+        <nav aria-label="Primary navigation">
+          {navItems.map((item) => (
+            <button key={item.id} className={page === item.id ? 'active' : ''} onClick={() => setPage(item.id)}>
+              <item.icon size={17} />
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+        <section className="source-card">
+          <ShieldCheck size={18} />
+          <div>
+            <strong>Review-only mode</strong>
+            <p>Local finance seed data is active. Ledger, bank, and email actions are not executed.</p>
+          </div>
+        </section>
+      </aside>
+      <main className="main">
+        <header className="topbar">
+          <div>
+            <span className="eyebrow">{copy.kicker}</span>
+            <h1>{copy.title}</h1>
+            <p>{copy.description}</p>
+          </div>
+          <div className="topbar-actions">
+            <StatusBadge tone="success">Build passing</StatusBadge>
+            <StatusBadge tone="info">AED reporting</StatusBadge>
+            <StatusBadge tone="warning">Seed data</StatusBadge>
+          </div>
+        </header>
+        <AnimatePresence mode="wait">
+          <motion.div key={page} {...pageTransition}>
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+    </div>
+  );
+}
+
+export function App() {
+  const [page, setPage] = useState<Page>('dashboard');
+  const [query, setQuery] = useState('');
+  const [entityFilter, setEntityFilter] = useState('All');
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [bucketFilter, setBucketFilter] = useState('All');
+  const [riskFilter, setRiskFilter] = useState('All');
+  const [sortKey, setSortKey] = useState<SortKey>('amountDue');
+  const [selectedReceivable, setSelectedReceivable] = useState<Receivable | null>(null);
+  const [collections, setCollections] = useState(collectionSeed);
+  const reports = useMemo(() => buildReports(reportDefinitions, receivables, entities, collections, allocations, disputes, controls), [collections]);
+
+  const filteredReceivables = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return receivables
+      .filter((record) => {
+        const searchText = `${record.customerName} ${record.customerNumber} ${record.transactionNumber} ${record.transactionDescription} ${record.owner}`.toLowerCase();
+        return (
+          (!normalizedQuery || searchText.includes(normalizedQuery)) &&
+          (entityFilter === 'All' || record.entity === entityFilter) &&
+          (categoryFilter === 'All' || record.category === categoryFilter) &&
+          (bucketFilter === 'All' || record.bucket === bucketFilter) &&
+          (riskFilter === 'All' || record.risk === riskFilter)
+        );
+      })
+      .sort((a, b) => {
+        if (sortKey === 'customerName') return a.customerName.localeCompare(b.customerName);
+        if (sortKey === 'dueDate') return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return b[sortKey] - a[sortKey];
+      });
+  }, [bucketFilter, categoryFilter, entityFilter, query, riskFilter, sortKey]);
+
+  function resetFilters() {
+    setQuery('');
+    setEntityFilter('All');
+    setCategoryFilter('All');
+    setBucketFilter('All');
+    setRiskFilter('All');
+    setSortKey('amountDue');
+  }
+
+  function markFollowedUp(id: string) {
+    setCollections((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              followUpStatus: 'Contacted',
+              lastContactDate: '2026-06-24',
+              notes: ['Follow-up marked complete in local review state.', ...item.notes]
+            }
+          : item
+      )
+    );
+  }
+
+  function escalate(id: string) {
+    setCollections((current) =>
+      current.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              followUpStatus: 'Escalated',
+              escalationStatus: item.escalationStatus === 'None' ? 'Finance Manager' : item.escalationStatus,
+              notes: ['Escalation prepared for approval. No external system updated.', ...item.notes]
+            }
+          : item
+      )
+    );
+  }
+
+  return (
+    <AppShell page={page} setPage={setPage}>
+      {page === 'dashboard' && <Dashboard setPage={setPage} />}
+      {page === 'receivables' && (
+        <ReceivablesPage
+          rows={filteredReceivables}
+          query={query}
+          setQuery={setQuery}
+          entityFilter={entityFilter}
+          setEntityFilter={setEntityFilter}
+          categoryFilter={categoryFilter}
+          setCategoryFilter={setCategoryFilter}
+          bucketFilter={bucketFilter}
+          setBucketFilter={setBucketFilter}
+          riskFilter={riskFilter}
+          setRiskFilter={setRiskFilter}
+          sortKey={sortKey}
+          setSortKey={setSortKey}
+          resetFilters={resetFilters}
+          onSelect={setSelectedReceivable}
+        />
+      )}
+      {page === 'collections' && <CollectionsPage rows={collections} onFollowUp={markFollowedUp} onEscalate={escalate} />}
+      {page === 'allocation' && <AllocationPage rows={allocations} />}
+      {page === 'disputes' && <DisputesPage rows={disputes} />}
+      {page === 'treasury' && <TreasuryPage rows={treasuryPositions} />}
+      {page === 'controls' && <ControlsPage rows={controls} />}
+      {page === 'reports' && <ReportsPage reports={reports} />}
+      {page === 'settings' && <SettingsPage />}
+      <DetailDrawer record={selectedReceivable} onClose={() => setSelectedReceivable(null)} />
+    </AppShell>
+  );
+}
+
+function Dashboard({ setPage }: { setPage: (page: Page) => void }) {
+  const metrics = calculateExecutiveMetrics(entities, receivables, allocations, disputes, controls);
+  const distribution = agingDistribution(receivables);
+  const entityMax = getMax(entities, (entity) => entity.totalAr);
+  const priority = [...receivables].sort((a, b) => b.amountDue - a.amountDue).slice(0, 5);
+
+  return (
+    <section className="page-stack">
+      <div className="kpi-grid">
+        <KpiCard title="Total AR" value={formatAed(metrics.totalAr, true)} trend="+3.8% vs prior close" tone="info" />
+        <KpiCard title="Overdue AR" value={formatAed(metrics.overdueAr, true)} trend="43.1% of exposure" tone="warning" />
+        <KpiCard title="90+ overdue" value={formatAed(metrics.ninetyPlus, true)} trend="91-180 + 181-360 + 361+" tone="critical" />
+        <KpiCard title="Month-end readiness" value={`${metrics.readinessScore}%`} trend="Controls reviewed or signed off" tone="success" />
+        <KpiCard title="DSO" value={metrics.weightedDso.toFixed(1)} trend="Weighted by entity AR" tone="info" />
+        <KpiCard title="CEI" value={`${metrics.weightedCei.toFixed(1)}%`} trend="Operational estimate" tone="success" />
+        <KpiCard title="Unapplied cash" value={formatAed(metrics.unappliedCash, true)} trend="Allocation review queue" tone="warning" />
+        <KpiCard title="Disputed amount" value={formatAed(metrics.disputedAmount, true)} trend={`${metrics.highRiskCustomers} high-risk customers`} tone="critical" />
+      </div>
+
+      <div className="dashboard-grid">
+        <SectionCard title="Aging Distribution" kicker="Outstanding by bucket" action={<button onClick={() => setPage('receivables')}>Open aging <ChevronRight size={15} /></button>}>
+          <BarList rows={distribution.map((row) => ({ label: row.bucket, value: row.amount }))} />
+        </SectionCard>
+        <SectionCard title="Entity Exposure" kicker="Total AR by legal entity">
+          <div className="entity-list">
+            {entities.map((entity) => (
+              <div className="entity-row" key={entity.entity}>
+                <div>
+                  <strong>{entity.entity}</strong>
+                  <span>{entity.legalName}</span>
+                </div>
+                <div className="bar-track">
+                  <span style={{ width: `${chartPercent(entity.totalAr, entityMax)}%` }} />
+                </div>
+                <strong className="amount">{formatAed(entity.totalAr, true)}</strong>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard title="Collection Priority" kicker="Largest current operational exceptions" className="wide">
+          <div className="priority-list">
+            {priority.map((record) => (
+              <button key={record.id} onClick={() => setPage('receivables')}>
+                <div>
+                  <strong>{record.customerName}</strong>
+                  <span>{record.transactionNumber} · {record.bucket} · {record.owner}</span>
+                </div>
+                <StatusBadge tone={toneForRisk(record.risk)}>{record.risk}</StatusBadge>
+                <strong className="amount">{formatAed(record.amountDue, true)}</strong>
+              </button>
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard title="Operational Exceptions" kicker="Controls requiring attention">
+          <ExceptionList />
+        </SectionCard>
+      </div>
+    </section>
+  );
+}
+
+function ReceivablesPage(props: {
+  rows: Receivable[];
+  query: string;
+  setQuery: (value: string) => void;
+  entityFilter: string;
+  setEntityFilter: (value: string) => void;
+  categoryFilter: string;
+  setCategoryFilter: (value: string) => void;
+  bucketFilter: string;
+  setBucketFilter: (value: string) => void;
+  riskFilter: string;
+  setRiskFilter: (value: string) => void;
+  sortKey: SortKey;
+  setSortKey: (value: SortKey) => void;
+  resetFilters: () => void;
+  onSelect: (record: Receivable) => void;
+}) {
+  const entitiesList = ['All', ...Array.from(new Set(receivables.map((record) => record.entity)))];
+  const categories = ['All', ...Array.from(new Set(receivables.map((record) => record.category)))];
+  const buckets: ('All' | AgingBucket)[] = ['All', 'Current', '1-30', '31-60', '61-90', '91-180', '181-360', '361+'];
+  const risks: ('All' | RiskLevel)[] = ['All', 'Low', 'Medium', 'High', 'Critical'];
+  const total = props.rows.reduce((sum, row) => sum + row.amountDue, 0);
+  const ninety = props.rows.filter((row) => ['91-180', '181-360', '361+'].includes(row.bucket)).reduce((sum, row) => sum + row.amountDue, 0);
+
+  return (
+    <section className="page-stack">
+      <FilterBar>
+        <SearchInput value={props.query} onChange={props.setQuery} placeholder="Search customer, invoice, owner..." />
+        <Select label="Entity" value={props.entityFilter} onChange={props.setEntityFilter} options={entitiesList} />
+        <Select label="Category" value={props.categoryFilter} onChange={props.setCategoryFilter} options={categories} />
+        <Select label="Bucket" value={props.bucketFilter} onChange={props.setBucketFilter} options={buckets} />
+        <Select label="Risk" value={props.riskFilter} onChange={props.setRiskFilter} options={risks} />
+        <Select label="Sort" value={props.sortKey} onChange={(value) => props.setSortKey(value as SortKey)} options={['amountDue', 'daysLate', 'customerName', 'dueDate']} />
+        <button className="ghost-button" onClick={props.resetFilters}>Reset</button>
+      </FilterBar>
+
+      <div className="summary-strip">
+        <MetricPill label="Filtered amount" value={formatAed(total, true)} />
+        <MetricPill label="90+ in view" value={formatAed(ninety, true)} />
+        <MetricPill label="Records" value={formatNumber(props.rows.length)} />
+      </div>
+
+      <SectionCard title="Invoice Aging Register" kicker="Sticky header, right-aligned amounts, sortable operating view">
+        {props.rows.length === 0 ? (
+          <EmptyState title="No receivables match these filters" body="Reset filters or broaden the search to review the full aging population." action={<button onClick={props.resetFilters}>Reset filters</button>} />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Entity</th>
+                  <th>Transaction</th>
+                  <th>Due date</th>
+                  <th className="num">Days late</th>
+                  <th>Bucket</th>
+                  <th>Category</th>
+                  <th>Owner</th>
+                  <th>Status</th>
+                  <th>Risk</th>
+                  <th className="num">Amount due</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {props.rows.map((record) => (
+                  <tr key={record.id}>
+                    <td>
+                      <strong>{record.customerName}</strong>
+                      <span>{record.customerNumber}</span>
+                    </td>
+                    <td>{record.entity}</td>
+                    <td>
+                      <strong>{record.transactionNumber}</strong>
+                      <span>{record.transactionDescription}</span>
+                    </td>
+                    <td>{formatDate(record.dueDate)}</td>
+                    <td className="num">{record.daysLate}</td>
+                    <td><AgingBucketBadge bucket={record.bucket} /></td>
+                    <td>{record.category}</td>
+                    <td>{record.owner}</td>
+                    <td><StatusBadge tone="neutral">{record.status}</StatusBadge></td>
+                    <td><StatusBadge tone={toneForRisk(record.risk)}>{record.risk}</StatusBadge></td>
+                    <td className="num amount">{formatAed(record.amountDue)}</td>
+                    <td><button className="icon-button" onClick={() => props.onSelect(record)} aria-label={`Open ${record.transactionNumber}`}><PanelRightOpen size={16} /></button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+    </section>
+  );
+}
+
+function CollectionsPage({ rows, onFollowUp, onEscalate }: { rows: CollectionAccount[]; onFollowUp: (id: string) => void; onEscalate: (id: string) => void }) {
+  return (
+    <section className="page-stack">
+      <div className="module-grid">
+        {rows.map((row) => (
+          <SectionCard key={row.id} title={row.customerName} kicker={`${row.entity} · ${row.owner}`}>
+            <div className="collection-card">
+              <div className="collection-metrics">
+                <MetricPill label="Exposure" value={formatAed(row.exposure, true)} />
+                <MetricPill label="90+ overdue" value={formatAed(row.overdue90, true)} />
+                <MetricPill label="Next action" value={formatDate(row.nextActionDate)} />
+              </div>
+              <div className="state-row">
+                <StatusBadge tone={row.priority === 'Today' ? 'critical' : row.priority === 'This Week' ? 'warning' : 'info'}>{row.priority}</StatusBadge>
+                <StatusBadge tone={row.legalEscalation ? 'critical' : row.paymentPlan ? 'info' : 'neutral'}>{row.followUpStatus}</StatusBadge>
+                <StatusBadge tone="warning">{row.escalationStatus}</StatusBadge>
+                <StatusBadge tone="info">Draft only</StatusBadge>
+              </div>
+              <ul className="notes-list">
+                {row.notes.map((note) => <li key={note}>{note}</li>)}
+              </ul>
+              <div className="action-row">
+                <button onClick={() => onFollowUp(row.id)}><CheckCircle2 size={15} /> Mark followed up</button>
+                <button className="secondary-action" onClick={() => onEscalate(row.id)}><ArrowUpRight size={15} /> Escalate</button>
+                <button className="secondary-action"><FileSpreadsheet size={15} /> Generate draft</button>
+              </div>
+            </div>
+          </SectionCard>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AllocationPage({ rows }: { rows: AllocationReceipt[] }) {
+  return (
+    <section className="page-stack">
+      <SectionCard title="Unapplied Receipts" kicker="Transparent business-rule matching, no automated ledger posting">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Receipt</th>
+                <th>Bank reference</th>
+                <th>Customer hint</th>
+                <th>Suggested match</th>
+                <th>Reason</th>
+                <th className="num">Confidence</th>
+                <th>Status</th>
+                <th className="num">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td><strong>{row.id}</strong><span>{formatDate(row.receiptDate)} · {row.bankAccount}</span></td>
+                  <td>{row.bankReference}<span>{row.proofReference}</span></td>
+                  <td>{row.customerHint}</td>
+                  <td><strong>{row.suggestedCustomer}</strong><span>{row.suggestedInvoice}</span></td>
+                  <td>{row.matchReason}</td>
+                  <td className="num"><Confidence value={row.confidence} /></td>
+                  <td><StatusBadge tone={row.status === 'Unidentified' ? 'critical' : row.status === 'Manual Review' ? 'warning' : 'info'}>{row.status}</StatusBadge></td>
+                  <td className="num amount">{formatAed(row.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </section>
+  );
+}
+
+function DisputesPage({ rows }: { rows: DisputeCase[] }) {
+  return (
+    <section className="page-stack">
+      <div className="module-grid">
+        {rows.map((row) => (
+          <SectionCard key={row.id} title={row.id} kicker={`${row.type} · ${row.customerName}`}>
+            <div className="dispute-card">
+              <div className="state-row">
+                <StatusBadge tone={row.slaStatus === 'Breached' ? 'critical' : row.slaStatus === 'Due Soon' ? 'warning' : 'success'}>{row.slaStatus}</StatusBadge>
+                <StatusBadge tone="neutral">{row.status}</StatusBadge>
+                <StatusBadge tone="info">{row.owner}</StatusBadge>
+              </div>
+              <div className="collection-metrics">
+                <MetricPill label="Blocked amount" value={formatAed(row.amountBlocked, true)} />
+                <MetricPill label="Age" value={`${row.ageDays} days`} />
+                <MetricPill label="Invoice" value={row.linkedInvoice} />
+              </div>
+              <ol className="timeline">
+                {row.timeline.map((event) => <li key={event}>{event}</li>)}
+              </ol>
+            </div>
+          </SectionCard>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function TreasuryPage({ rows }: { rows: TreasuryPosition[] }) {
+  const totals = treasuryTotals(rows);
+  const max = getMax(rows, (row) => row.forecast30Days);
+  return (
+    <section className="page-stack">
+      <div className="kpi-grid compact">
+        <KpiCard title="Expected collections" value={formatAed(totals.expected, true)} trend="Next operating cycle" tone="info" />
+        <KpiCard title="Confirmed receipts" value={formatAed(totals.confirmed, true)} trend="Bank-confirmed today" tone="success" />
+        <KpiCard title="Unallocated receipts" value={formatAed(totals.unallocated, true)} trend="Allocation queue" tone="warning" />
+        <KpiCard title="Bank pending" value={formatAed(totals.pending, true)} trend="Confirmation required" tone="critical" />
+      </div>
+      <SectionCard title="Entity Cash Forecast" kicker="7-day and 30-day operational inflow visibility">
+        <div className="entity-list">
+          {rows.map((row) => (
+            <div className="entity-row" key={row.id}>
+              <div>
+                <strong>{row.entity}</strong>
+                <span>{formatDate(row.date)} · 7-day {formatAed(row.forecast7Days, true)}</span>
+              </div>
+              <div className="bar-track">
+                <span style={{ width: `${chartPercent(row.forecast30Days, max)}%` }} />
+              </div>
+              <strong className="amount">{formatAed(row.forecast30Days, true)}</strong>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </section>
+  );
+}
+
+function ControlsPage({ rows }: { rows: ControlItem[] }) {
+  return (
+    <section className="page-stack">
+      <SectionCard title="Month-end Control Checklist" kicker="Evidence, owner, due date, status, and exception count">
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Area</th>
+                <th>Control</th>
+                <th>Owner</th>
+                <th>Due date</th>
+                <th>Status</th>
+                <th>Evidence</th>
+                <th className="num">Exceptions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.area}</td>
+                  <td><strong>{row.control}</strong></td>
+                  <td>{row.owner}</td>
+                  <td>{formatDate(row.dueDate)}</td>
+                  <td><StatusBadge tone={row.status === 'Signed Off' || row.status === 'Reviewed' ? 'success' : row.status === 'Pending Evidence' ? 'warning' : 'neutral'}>{row.status}</StatusBadge></td>
+                  <td><StatusBadge tone={row.evidenceStatus === 'Missing' ? 'critical' : row.evidenceStatus === 'Requested' ? 'warning' : 'info'}>{row.evidenceStatus}</StatusBadge></td>
+                  <td className="num">{row.exceptions}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </section>
+  );
+}
+
+function ReportsPage({ reports }: { reports: ReturnType<typeof buildReports> }) {
+  const [activeReport, setActiveReport] = useState(reports[0]);
+  return (
+    <section className="reports-layout">
+      <aside className="report-nav">
+        {reports.map((report) => (
+          <button key={report.id} className={activeReport.id === report.id ? 'active' : ''} onClick={() => setActiveReport(report)}>
+            <strong>{report.title}</strong>
+            <span>{report.description}</span>
+          </button>
+        ))}
+      </aside>
+      <SectionCard
+        title={activeReport.title}
+        kicker={activeReport.description}
+        action={<button disabled={activeReport.rows.length === 0} onClick={() => downloadCsv(`${activeReport.id}.csv`, activeReport.rows)}><Download size={15} /> Export CSV</button>}
+      >
+        {activeReport.rows.length === 0 ? (
+          <EmptyState title="No report rows available" body="This report has no rows from the current local source." />
+        ) : (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>{Object.keys(activeReport.rows[0]).map((key) => <th key={key}>{key}</th>)}</tr>
+              </thead>
+              <tbody>
+                {activeReport.rows.map((row, index) => (
+                  <tr key={index}>
+                    {Object.entries(row).map(([key, value]) => (
+                      <td key={key} className={typeof value === 'number' ? 'num' : ''}>{typeof value === 'number' && isCurrencyReportKey(key) ? formatAed(value, true) : String(value)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+    </section>
+  );
+}
+
+function SettingsPage() {
+  const rows = [
+    ['Finance source', 'Local realistic seed data', 'Active'],
+    ['Supabase finance schema', 'Repository fallback exists', 'Not required for this build'],
+    ['Email sending', 'No backend service wired', 'Draft only'],
+    ['Ledger allocation', 'No ERP write integration wired', 'Review only'],
+    ['Vercel deployment', 'Existing project configuration preserved', 'Active']
+  ];
+  return (
+    <section className="page-stack">
+      <SectionCard title="Integration Boundaries" kicker="No unverified backend claims">
+        <div className="settings-grid">
+          {rows.map(([label, detail, state]) => (
+            <div key={label}>
+              <strong>{label}</strong>
+              <span>{detail}</span>
+              <StatusBadge tone={state === 'Active' ? 'success' : 'warning'}>{state}</StatusBadge>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
+    </section>
+  );
+}
+
+function KpiCard({ title, value, trend, tone }: { title: string; value: string; trend: string; tone: 'success' | 'warning' | 'critical' | 'info' }) {
+  const TrendIcon = tone === 'critical' || tone === 'warning' ? ArrowUpRight : ArrowDownRight;
+  return (
+    <motion.div className={`kpi-card ${tone}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} whileHover={{ y: -2 }}>
+      <span>{title}</span>
+      <strong>{value}</strong>
+      <em><TrendIcon size={14} /> {trend}</em>
+    </motion.div>
+  );
+}
+
+function SectionCard({ title, kicker, action, className = '', children }: { title: string; kicker: string; action?: React.ReactNode; className?: string; children: React.ReactNode }) {
+  return (
+    <section className={`section-card ${className}`}>
+      <header>
+        <div>
+          <span className="eyebrow">{kicker}</span>
+          <h2>{title}</h2>
+        </div>
+        {action}
+      </header>
+      {children}
+    </section>
+  );
+}
+
+function StatusBadge({ tone, children }: { tone: 'success' | 'warning' | 'critical' | 'info' | 'neutral'; children: React.ReactNode }) {
+  return <span className={`status-badge ${tone}`}>{children}</span>;
+}
+
+function AgingBucketBadge({ bucket }: { bucket: AgingBucket }) {
+  const tone = bucket === 'Current' ? 'success' : bucket === '1-30' || bucket === '31-60' ? 'info' : bucket === '61-90' ? 'warning' : 'critical';
+  return <StatusBadge tone={tone}>{bucket}</StatusBadge>;
+}
+
+function MetricPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-pill">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function FilterBar({ children }: { children: React.ReactNode }) {
+  return <div className="filter-bar"><Filter size={17} />{children}</div>;
+}
+
+function SearchInput({ value, onChange, placeholder }: { value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <label className="search-input">
+      <Search size={16} />
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+    </label>
+  );
+}
+
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: readonly string[] }) {
+  return (
+    <label className="select-control">
+      <span>{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => <option key={option} value={option}>{option}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function BarList({ rows }: { rows: { label: string; value: number }[] }) {
+  const max = getMax(rows, (row) => row.value);
+  return (
+    <div className="bar-list">
+      {rows.map((row) => (
+        <div key={row.label}>
+          <div>
+            <strong>{row.label}</strong>
+            <span>{formatAed(row.value, true)}</span>
+          </div>
+          <div className="bar-track">
+            <motion.span initial={{ width: 0 }} animate={{ width: `${chartPercent(row.value, max)}%` }} transition={{ duration: 0.45 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Confidence({ value }: { value: number }) {
+  return (
+    <div className="confidence">
+      <div><span style={{ width: `${value}%` }} /></div>
+      <strong>{value}%</strong>
+    </div>
+  );
+}
+
+function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+  return (
+    <div className="empty-state">
+      <Layers3 size={24} />
+      <strong>{title}</strong>
+      <p>{body}</p>
+      {action}
+    </div>
+  );
+}
+
+function ExceptionList() {
+  const exceptions = [
+    { label: 'Provision review not started', value: 'AED 64.1M 90+ exposure', tone: 'critical' as const },
+    { label: 'Subledger evidence pending', value: '2 reconciliation exceptions', tone: 'warning' as const },
+    { label: 'Unapplied cash above threshold', value: '4 receipts require review', tone: 'warning' as const },
+    { label: 'Dispute SLA breached', value: 'Business Bay LPO issue', tone: 'critical' as const }
+  ];
+  return (
+    <div className="exception-list">
+      {exceptions.map((item) => (
+        <div key={item.label}>
+          <StatusBadge tone={item.tone}>{item.tone}</StatusBadge>
+          <strong>{item.label}</strong>
+          <span>{item.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DetailDrawer({ record, onClose }: { record: Receivable | null; onClose: () => void }) {
+  return (
+    <AnimatePresence>
+      {record && (
+        <motion.aside className="drawer" initial={{ x: 420, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 420, opacity: 0 }} transition={{ duration: 0.22, ease: 'easeOut' }}>
+          <header>
+            <div>
+              <span className="eyebrow">Receivable detail</span>
+              <h2>{record.transactionNumber}</h2>
+            </div>
+            <button className="icon-button" onClick={onClose} aria-label="Close drawer"><X size={17} /></button>
+          </header>
+          <div className="drawer-body">
+            <strong>{record.customerName}</strong>
+            <p>{record.transactionDescription}</p>
+            <div className="drawer-grid">
+              <MetricPill label="Original amount" value={formatAed(record.originalAmount, true)} />
+              <MetricPill label="Applied amount" value={formatAed(record.appliedAmount, true)} />
+              <MetricPill label="Remaining" value={formatAed(record.amountDue, true)} />
+              <MetricPill label="Days late" value={String(record.daysLate)} />
+            </div>
+            <div className="state-row">
+              <AgingBucketBadge bucket={record.bucket} />
+              <StatusBadge tone={toneForRisk(record.risk)}>{record.risk}</StatusBadge>
+              <StatusBadge tone="neutral">{record.status}</StatusBadge>
+            </div>
+            <dl>
+              <div><dt>Entity</dt><dd>{record.entity}</dd></div>
+              <div><dt>Category</dt><dd>{record.category}</dd></div>
+              <div><dt>Owner</dt><dd>{record.owner}</dd></div>
+              <div><dt>Invoice date</dt><dd>{formatDate(record.invoiceDate)}</dd></div>
+              <div><dt>Due date</dt><dd>{formatDate(record.dueDate)}</dd></div>
+              <div><dt>Next action</dt><dd>{formatDate(record.nextActionDate)}</dd></div>
+            </dl>
+            <div className="drawer-note">
+              <strong>Control note</strong>
+              <p>{record.notes}</p>
+            </div>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default App;

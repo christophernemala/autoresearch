@@ -1,50 +1,103 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: template -> 1.0.0
+Modified principles:
+- [PRINCIPLE_1_NAME] -> Finance Workflow Fidelity
+- [PRINCIPLE_2_NAME] -> Truthful Data And Integration Boundaries
+- [PRINCIPLE_3_NAME] -> Enterprise UI Quality
+- [PRINCIPLE_4_NAME] -> Controls, Auditability, And Accessibility
+- [PRINCIPLE_5_NAME] -> Verification Before Release
+Added sections:
+- Product Scope
+- Engineering Workflow
+Removed sections:
+- Placeholder SECTION_2_NAME
+- Placeholder SECTION_3_NAME
+Templates requiring updates:
+- .specify/templates/plan-template.md: reviewed, no update required
+- .specify/templates/spec-template.md: reviewed, no update required
+- .specify/templates/tasks-template.md: reviewed, no update required
+Follow-up TODOs:
+- None
+-->
+
+# DHCM Finance Control Hub Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### Finance Workflow Fidelity
+The product MUST model finance operations as receivables, collections,
+reconciliations, cash allocation, disputes, treasury visibility, controls, and
+reports. Every screen MUST expose business states, owners, dates, amounts, and
+exceptions that a finance operations team can act on. Features that only create
+generic dashboard decoration or chat-first experiences are not acceptable.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### Truthful Data And Integration Boundaries
+The application MUST distinguish connected data from seed or mock data. UI
+actions MUST NOT claim to send emails, execute allocations, update ledgers, or
+call external systems unless the integration exists and is wired. Derived
+metrics such as DSO, CEI, 90+ overdue, risk, and SLA status MUST be calculated
+from visible assumptions or labelled as operational estimates.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### Enterprise UI Quality
+The interface MUST use a centralized design system for color, typography,
+spacing, surfaces, radius, shadows, badges, tables, and motion. The product MUST
+feel calm, premium, dense, and executive-ready. Random gradients, neon clutter,
+oversized marketing heroes, childish animations, and placeholder-heavy screens
+are prohibited.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### Controls, Auditability, And Accessibility
+Finance workflows MUST preserve reviewability: status badges, evidence states,
+owners, exception logs, and clear draft-only labels are required where actions
+could affect customers or ledgers. Interactive elements MUST remain keyboard
+navigable with visible focus states, sufficient contrast, semantic controls, and
+readable table density across desktop, laptop, and tablet widths.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Verification Before Release
+Changes MUST pass typecheck, lint, and production build before deployment or
+merge recommendation. Build/deployment configuration MUST remain intact unless a
+change explicitly requires it. Visual changes MUST be reviewed in a browser when
+they affect layout, navigation, charts, drawers, tables, or responsive behavior.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Product Scope
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+DHCM Finance Control Hub is a production-grade finance operations and O2C
+control platform for receivables, collections, reconciliations, disputes,
+allocations, treasury visibility, audit readiness, and executive reporting.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The product targets DHCM and related UAE real estate finance teams. It may use
+realistic local seed data when backend data is unavailable, but it MUST avoid
+private customer data and MUST label source limitations. Initial scope is
+finance operations visibility and UI-level workflow preparation; irreversible
+ledger, banking, email, or customer-facing actions require real integrations and
+explicit approval controls.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Engineering Workflow
+
+Implementation MUST preserve the existing deployment path and improve the
+current project incrementally. Components and utilities SHOULD be reusable when
+shared behavior exists across modules, especially tables, badges, detail
+drawers, amount formatting, date formatting, aging calculations, filters, empty
+states, loading states, and chart primitives.
+
+Each feature slice MUST be independently testable through the running UI and the
+standard project commands. Pull requests or commits SHOULD separate product
+scaffolding, data/model changes, UI refactors, and dependency changes when that
+improves reviewability.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes ad hoc styling or feature decisions for this
+project. Amendments require a documented reason, semantic version bump, and a
+review of affected specs, plans, tasks, and runtime guidance.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Versioning follows semantic versioning:
+- MAJOR for incompatible changes to product governance or required quality gates.
+- MINOR for new principles or materially expanded product constraints.
+- PATCH for clarifications that do not change obligations.
+
+All implementation plans and reviews MUST check compliance with these
+principles. Non-compliant work must be corrected before release unless the
+exception is explicitly documented with owner, rationale, and remediation date.
+
+**Version**: 1.0.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-24

@@ -1,5 +1,16 @@
-import { bankTransactions, customers, entities, importResults, invoices } from '../data/dhcmSeed';
-import type { BankTransaction, Customer, EntityAging, ImportValidationResult, Invoice } from '../types';
+import { allocations, collections, controls, customers, disputes, entities, importResults, invoices, receivables, treasuryPositions } from '../data/dhcmSeed';
+import type {
+  AllocationReceipt,
+  CollectionAccount,
+  ControlItem,
+  Customer,
+  DisputeCase,
+  EntityAging,
+  ImportValidationResult,
+  Invoice,
+  Receivable,
+  TreasuryPosition
+} from '../types';
 import { supabase, supabaseConfigured } from './supabaseClient';
 
 export interface FinanceSnapshot {
@@ -7,7 +18,12 @@ export interface FinanceSnapshot {
   entities: EntityAging[];
   customers: Customer[];
   invoices: Invoice[];
-  bankTransactions: BankTransaction[];
+  receivables: Receivable[];
+  allocations: AllocationReceipt[];
+  collections: CollectionAccount[];
+  disputes: DisputeCase[];
+  treasuryPositions: TreasuryPosition[];
+  controls: ControlItem[];
   importResults: ImportValidationResult[];
 }
 
@@ -16,7 +32,12 @@ export const seedFinanceSnapshot: FinanceSnapshot = {
   entities,
   customers,
   invoices,
-  bankTransactions,
+  receivables,
+  allocations,
+  collections,
+  disputes,
+  treasuryPositions,
+  controls,
   importResults
 };
 
