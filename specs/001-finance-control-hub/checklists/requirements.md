@@ -1,4 +1,4 @@
-# Specification Quality Checklist: DHCM Finance Control Hub
+# Specification Quality Checklist: Finance Control Hub
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-06-24

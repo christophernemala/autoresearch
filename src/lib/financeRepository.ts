@@ -1,4 +1,4 @@
-import { allocations, collections, controls, customers, disputes, entities, importResults, invoices, receivables, treasuryPositions } from '../data/dhcmSeed';
+import { allocations, collections, controls, customers, disputes, entities, importResults, invoices, receivables, treasuryPositions } from '../data/financeSeed';
 import type {
   AllocationReceipt,
   CollectionAccount,

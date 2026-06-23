@@ -1,12 +1,12 @@
-# Feature Specification: DHCM Finance Control Hub
+# Feature Specification: Finance Control Hub
 
-**Feature Branch**: `dhcm-finance-control-hub`
+**Feature Branch**: `current working branch`
 
 **Created**: 2026-06-24
 
 **Status**: Draft
 
-**Input**: User description: "DHCM Finance Control Hub - a production-grade finance operations and O2C control platform for receivables, collections, reconciliations, disputes, allocations, treasury visibility, audit readiness, and executive reporting."
+**Input**: User description: "Finance Control Hub - a production-grade finance operations and O2C control platform for receivables, collections, reconciliations, disputes, allocations, treasury visibility, audit readiness, and executive reporting."
 
 ## User Scenarios & Testing *(mandatory)*
 

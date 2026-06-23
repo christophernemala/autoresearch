@@ -21,7 +21,7 @@ Follow-up TODOs:
 - None
 -->
 
-# DHCM Finance Control Hub Constitution
+# Finance Control Hub Constitution
 
 ## Core Principles
 
@@ -61,11 +61,11 @@ they affect layout, navigation, charts, drawers, tables, or responsive behavior.
 
 ## Product Scope
 
-DHCM Finance Control Hub is a production-grade finance operations and O2C
+Finance Control Hub is a production-grade finance operations and O2C
 control platform for receivables, collections, reconciliations, disputes,
 allocations, treasury visibility, audit readiness, and executive reporting.
 
-The product targets DHCM and related UAE real estate finance teams. It may use
+The product targets finance operations and real estate finance teams. It may use
 realistic local seed data when backend data is unavailable, but it MUST avoid
 private customer data and MUST label source limitations. Initial scope is
 finance operations visibility and UI-level workflow preparation; irreversible

@@ -32,7 +32,7 @@ import {
   receivables,
   reportDefinitions,
   treasuryPositions
-} from './data/dhcmSeed';
+} from './data/financeSeed';
 import {
   agingDistribution,
   buildReports,
@@ -143,7 +143,7 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
         <button className="brand" onClick={() => setPage('dashboard')} aria-label="Open executive dashboard">
           <span>DH</span>
           <div>
-            <strong>DHCM</strong>
+            <strong>Finance</strong>
             <small>Finance Control</small>
           </div>
         </button>
@@ -796,7 +796,7 @@ function ExceptionList() {
     { label: 'Provision review not started', value: 'AED 64.1M 90+ exposure', tone: 'critical' as const },
     { label: 'Subledger evidence pending', value: '2 reconciliation exceptions', tone: 'warning' as const },
     { label: 'Unapplied cash above threshold', value: '4 receipts require review', tone: 'warning' as const },
-    { label: 'Dispute SLA breached', value: 'Business Bay LPO issue', tone: 'critical' as const }
+    { label: 'Dispute SLA breached', value: 'Business district LPO issue', tone: 'critical' as const }
   ];
   return (
     <div className="exception-list">

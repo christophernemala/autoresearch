@@ -49,11 +49,11 @@ export const ORACLE_AGING_BUCKET_COLUMNS = [
 ] as const;
 
 export const ENTITY_CODE_MAP: Record<string, string> = {
-  'Dubai Community Management': 'DCM',
-  'Dubai Properties Community Management': 'DPCM',
-  'Dubai Properties Development Management': 'DPDM',
-  'Nakheel Community Management': 'NCM',
-  'Nakheel Palm Community Management': 'NPCM'
+  'Finance Management Group': 'FMG',
+  'Residential Community Management': 'RCM',
+  'Urban Community Management': 'UCM',
+  'Property Community Management': 'PCM',
+  'Property District Management': 'PDM'
 };
 
 export function validateOracleArColumns(uploadedColumns: string[]) {
