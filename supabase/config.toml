@@ -1,4 +1,4 @@
-project_id = "dhcm-finance-control-hub"
+project_id = "o2c-orchestration-platform"
 
 [functions.ai-chat]
 verify_jwt = true

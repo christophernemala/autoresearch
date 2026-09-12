@@ -1,5 +1,5 @@
 {
-  "name": "finance-control-hub",
+  "name": "o2c-orchestration-platform",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,6 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx --max-warnings=0",
+    "test": "vitest run",
+    "test:branding": "vitest run src/tests/branding.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@types/node": "^22.20.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
@@ -26,6 +29,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vitest": "^5.0.0"
   }
 }

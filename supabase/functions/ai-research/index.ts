@@ -8,7 +8,7 @@ Deno.serve(async (request) => {
   if (!keyCheck.ok) return keyCheck.response;
 
   const payload = await request.json().catch(() => ({}));
-  const query = payload.query ?? payload.message ?? 'DHCM finance operations benchmark';
+  const query = payload.query ?? payload.message ?? 'Enterprise O2C finance operations benchmark';
   const model = Deno.env.get('PERPLEXITY_MODEL') ?? 'sonar';
 
   const response = await fetch('https://api.perplexity.ai/chat/completions', {

@@ -1,91 +1,163 @@
-# autoresearch
+# O2C Orchestration — Enterprise Financial SaaS
 
-![teaser](progress.png)
+> **Mission-Critical Order-to-Cash (O2C) Orchestration Platform** with deterministic multi-agent governance, IFRS 9 Expected Credit Loss (ECL) provisioning, automated bank reconciliation, and Maker–Checker four-eyes cryptographic security.
 
-*One day, frontier AI research used to be done by meat computers in between eating, sleeping, having other fun, and synchronizing once in a while using sound wave interconnect in the ritual of "group meeting". That era is long gone. Research is now entirely the domain of autonomous swarms of AI agents running across compute cluster megastructures in the skies. The agents claim that we are now in the 10,205th generation of the code base, in any case no one could tell if that's right or wrong as the "code" is now a self-modifying binary that has grown beyond human comprehension. This repo is the story of how it all began. -@karpathy, March 2026*.
+[![O2C CI](https://github.com/christophernemala/autoresearch/actions/workflows/o2c-build.yml/badge.svg)](https://github.com/christophernemala/autoresearch/actions/workflows/o2c-build.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Security: SOC 2 Ready](https://img.shields.io/badge/Security-SOC%202%20Ready-green.svg)](docs/SCO.md)
 
-The idea: give an AI agent a small but real LLM training setup and let it experiment autonomously overnight. It modifies the code, trains for 5 minutes, checks if the result improved, keeps or discards, and repeats. You wake up in the morning to a log of experiments and (hopefully) a better model. The training code here is a simplified single-GPU implementation of [nanochat](https://github.com/karpathy/nanochat). The core idea is that you're not touching any of the Python files like you normally would as a researcher. Instead, you are programming the `program.md` Markdown files that provide context to the AI agents and set up your autonomous research org. The default `program.md` in this repo is intentionally kept as a bare bones baseline, though it's obvious how one would iterate on it over time to find the "research org code" that achieves the fastest research progress, how you'd add more agents to the mix, etc. A bit more context on this project is here in this [tweet](https://x.com/karpathy/status/2029701092347630069).
+---
 
-## How it works
+## 🏛 Platform Overview
 
-The repo is deliberately kept small and only really has three files that matter:
+O2C Orchestration is an enterprise receivables intelligence and subledger control platform designed for corporate treasuries, controllers, and finance operations. Unlike generic dashboard mockups, this platform enforces strict financial invariants:
+- **Zero Floating-Point Money**: All computations use fixed-decimal rounding rules.
+- **Segregation of Duties (SoD)**: Enforces `makerUserId !== checkerUserId` across all material financial adjustments.
+- **Cryptographic Tamper Detection**: Computes canonical SHA-256 payload hashes at proposal creation; execution automatically aborts if the payload is modified in transit.
+- **Deterministic Mathematics**: Aging distributions, DSO, CEI, and IFRS 9 ECL provisions ($ECL = PD \times LGD \times EAD$) are computed via audited mathematical models rather than generative hallucination.
 
-- **`prepare.py`** — fixed constants, one-time data prep (downloads training data, trains a BPE tokenizer), and runtime utilities (dataloader, evaluation). Not modified.
-- **`train.py`** — the single file the agent edits. Contains the full GPT model, optimizer (Muon + AdamW), and training loop. Everything is fair game: architecture, hyperparameters, optimizer, batch size, etc. **This file is edited and iterated on by the agent**.
-- **`program.md`** — baseline instructions for one agent. Point your agent here and let it go. **This file is edited and iterated on by the human**.
+---
 
-By design, training runs for a **fixed 5-minute time budget** (wall clock, excluding startup/compilation), regardless of the details of your compute. The metric is **val_bpb** (validation bits per byte) — lower is better, and vocab-size-independent so architectural changes are fairly compared.
+## 🚀 Key Modules & Capabilities
 
-If you are new to neural networks, this ["Dummy's Guide"](https://x.com/hooeem/status/2030720614752039185) looks pretty good for a lot more context.
+### 1. Executive Command Center (`/dashboard`)
+- Real-time aggregated portfolio metrics: Total AR, Overdue AR, 90+ Overdue, DSO (Days Sales Outstanding), CEI (Collection Effectiveness Index).
+- Aging distribution across 7 standardized buckets: Current, 1–30, 31–60, 61–90, 91–180, 181–360, 361+.
+- Entity-level exposure bars and high-value operational exception ranking.
 
-## Quick start
+### 2. Receivables Aging Subledger (`/receivables`)
+- Subledger invoice table with multi-dimensional filtering (legal entity, category, aging bucket, risk level).
+- Real-time search across customers, invoice transaction numbers, and credit managers.
+- Spring-animated slide-over drawer with complete transaction audit history.
 
-**Requirements:** A single NVIDIA GPU (tested on H100), Python 3.10+, [uv](https://docs.astral.sh/uv/).
+### 3. Collections Workspace (`/collections`)
+- Operational worklist prioritized by overdue severity and risk rating.
+- Promise-to-pay (PTP) recording and broken promise detection.
+- Humanized Dunning draft generation (labeled draft-only until reviewed and approved).
 
+### 4. Cash Application & Bank Matching (`/allocation`)
+- Hierarchical deterministic matching algorithm:
+  - Exact invoice reference match ($\ge 98\%$ confidence $\rightarrow$ eligible for Straight-Through Processing).
+  - Customer name + exact amount match ($80\% - 97.9\%$ confidence $\rightarrow$ queued for analyst review).
+  - Unidentified receipts ($< 80\%$ confidence $\rightarrow$ flagged as unapplied cash exceptions).
+
+### 5. Credit Control & IFRS 9 ECL (`/credit`)
+- Deterministic Expected Credit Loss matrix calculator based on historical loss experience.
+- Dynamic macroeconomic scenario overlays (Baseline 1.0x, Downturn 1.25x, Upturn 0.85x).
+- 100% loss provision logic for exposures aged $\ge 361$ days.
+
+### 6. Maker–Checker Governance (`/approvals`)
+- Formal four-eyes approval workflow for credit limit overrides, bad debt write-offs, credit notes, and dispute settlements.
+- SHA-256 canonical JSON payload hashing.
+- Integrated interactive simulation demonstrating cryptographic tamper detection.
+
+### 7. Security Compliance Officer Console (`/sco`)
+- Immutable audit explorer with SHA-256 event hash chaining answering Who, What, When, Where, Why.
+- One-click cryptographic hash chain verification.
+- 12-role RBAC access matrix and real-time security incident telemetry.
+
+### 8. Enterprise Integration Hub (`/integrations`)
+- Standardized adapter interfaces for SAP S/4HANA, Oracle Fusion Cloud ERP, and NetSuite.
+- ISO 20022 SWIFT MT940 / CAMT.053 bank statement ingestion parser.
+- Real connection testing that reports honest connection states (`CONFIGURED` vs. `INTEGRATION_NOT_CONFIGURED`).
+
+---
+
+## 🛠 Tech Stack
+
+| Component | Technology | Version | Purpose |
+|---|---|---|---|
+| **Framework** | React + TypeScript | 18.3 / 5.7 | Strict-mode frontend application |
+| **Bundler** | Vite | 6.0.5 | Sub-second HMR and optimized production bundles |
+| **Motion** | Framer Motion | 12.41 | Spring physics transitions (`stiffness: 300, damping: 25`) |
+| **Icons** | Lucide React | 0.468 | High-clarity institutional iconography |
+| **Database/Auth** | Supabase (PostgreSQL) | 2.75 | Row-Level Security (RLS) & Multi-Tenant schema |
+| **Testing** | Vitest | 5.0.0 | Unit tests for financial invariants & tamper guards |
+| **Typography** | Outfit + Inter + JetBrains Mono | Variable | Google Fonts CDN typography pairing |
+
+---
+
+## 💻 Local Development Setup
+
+### Prerequisites
+- Node.js 20+ (Node 24 recommended)
+- npm 10+
+
+### Installation & Run
 ```bash
+# 1. Clone repository
+git clone https://github.com/christophernemala/autoresearch.git
+cd autoresearch
 
-# 1. Install uv project manager (if you don't already have it)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 2. Checkout feature branch
+git checkout dhcm-finance-control-hub
 
-# 2. Install dependencies
-uv sync
+# 3. Install dependencies
+npm install
 
-# 3. Download data and train tokenizer (one-time, ~2 min)
-uv run prepare.py
+# 4. Run automated test suite
+npm run test
 
-# 4. Manually run a single training experiment (~5 min)
-uv run train.py
+# 5. Verify type safety
+npm run typecheck
+
+# 6. Start development server
+npm run dev
 ```
 
-If the above commands all work ok, your setup is working and you can go into autonomous research mode.
+Open `http://localhost:5173` in your browser.
 
-## Running the agent
+---
 
-Simply spin up your Claude/Codex or whatever you want in this repo (and disable all permissions), then you can prompt something like:
+## 🔐 Multi-Tenant Authentication & Role Personas
 
+The platform includes preconfigured enterprise demo personas:
+- **Finance Controller**: `controller@acme-corp.com` (Full subledger & approval access)
+- **Credit Manager**: `credit.mgr@acme-corp.com` (Credit scoring & limit management)
+- **Senior Signer (Checker)**: `checker@acme-corp.com` (Independent Four-Eyes reviewer)
+- **AR Operations (Maker)**: `maker@acme-corp.com` (Proposal creator)
+- **SOC 2 Auditor**: `auditor@compliance.firm` (Read-only compliance & audit view)
+
+Click **"Switch Role / SSO"** in the topbar to test authentication flows, TOTP MFA challenges, or enterprise SSO simulation (Google Workspace, Microsoft Entra ID, Okta).
+
+---
+
+## 🧪 Verification & Automated Tests
+
+Run the complete test suite:
+```bash
+npm run test
 ```
-Hi have a look at program.md and let's kick off a new experiment! let's do the setup first.
-```
 
-The `program.md` file is essentially a super lightweight "skill".
+### Test Coverage Summary:
+- **`src/tests/branding.test.ts`**: Regression test ensuring 0 occurrences of legacy branding in active source.
+- **`src/tests/financeInvariants.test.ts`**:
+  - Segregation of Duties (`makerUserId !== checkerUserId`).
+  - Cryptographic tamper detection aborting execution on modified payloads.
+  - Independent Checker approval.
+  - Invoice lines + taxes exact total reconciliation.
+  - Cash application bounds checking.
+  - Journal entry balanced debits = credits.
+  - IFRS 9 ECL calculation with 100% loss rate for 361+ bucket.
+  - Immutable audit trail SHA-256 hash chaining verification.
 
-## Project structure
+---
 
-```
-prepare.py      — constants, data prep + runtime utilities (do not modify)
-train.py        — model, optimizer, training loop (agent modifies this)
-program.md      — agent instructions
-pyproject.toml  — dependencies
-```
+## 📖 Architecture & Governance Documentation
 
-## Design choices
+- [Target Architecture](ARCHITECTURE.md)
+- [Agent Governance & State Machines](AGENTS.md)
+- [Current State Audit Report](docs/CURRENT_STATE_AUDIT.md)
+- [Research Findings](docs/RESEARCH_FINDINGS.md)
+- [Design System & Typography](docs/DESIGN_RESEARCH.md)
+- [Maker–Checker Cryptographic Specification](docs/MAKER_CHECKER.md)
+- [IFRS 9 ECL Provisioning Model](docs/IFRS9_ECL.md)
+- [Single Sign-On (SSO) Architecture](docs/SSO.md)
+- [Security Compliance Officer (SCO) Blueprint](docs/SCO.md)
+- [Production Readiness Matrix](docs/PRODUCTION_READINESS.md)
 
-- **Single file to modify.** The agent only touches `train.py`. This keeps the scope manageable and diffs reviewable.
-- **Fixed time budget.** Training always runs for exactly 5 minutes, regardless of your specific platform. This means you can expect approx 12 experiments/hour and approx 100 experiments while you sleep. There are two upsides of this design decision. First, this makes experiments directly comparable regardless of what the agent changes (model size, batch size, architecture, etc). Second, this means that autoresearch will find the most optimal model for your platform in that time budget. The downside is that your runs (and results) become not comparable to other people running on other compute platforms.
-- **Self-contained.** No external dependencies beyond PyTorch and a few small packages. No distributed training, no complex configs. One GPU, one file, one metric.
+---
 
-## Platform support
+## 📄 License
 
-This code currently requires that you have a single NVIDIA GPU. In principle it is quite possible to support CPU, MPS and other platforms but this would also bloat the code. I'm not 100% sure that I want to take this on personally right now. People can reference (or have their agents reference) the full/parent nanochat repository that has wider platform support and shows the various solutions (e.g. a Flash Attention 3 kernels fallback implementation, generic device support, autodetection, etc.), feel free to create forks or discussions for other platforms and I'm happy to link to them here in the README in some new notable forks section or etc.
-
-Seeing as there seems to be a lot of interest in tinkering with autoresearch on much smaller compute platforms than an H100, a few extra words. If you're going to try running autoresearch on smaller computers (Macbooks etc.), I'd recommend one of the forks below. On top of this, here are some recommendations for how to tune the defaults for much smaller models for aspiring forks:
-
-1. To get half-decent results I'd use a dataset with a lot less entropy, e.g. this [TinyStories dataset](https://huggingface.co/datasets/karpathy/tinystories-gpt4-clean). These are GPT-4 generated short stories. Because the data is a lot narrower in scope, you will see reasonable results with a lot smaller models (if you try to sample from them after training).
-2. You might experiment with decreasing `vocab_size`, e.g. from 8192 down to 4096, 2048, 1024, or even - simply byte-level tokenizer with 256 possibly bytes after utf-8 encoding.
-3. In `prepare.py`, you'll want to lower `MAX_SEQ_LEN` a lot, depending on the computer even down to 256 etc. As you lower `MAX_SEQ_LEN`, you may want to experiment with increasing `DEVICE_BATCH_SIZE` in `train.py` slightly to compensate. The number of tokens per fwd/bwd pass is the product of these two.
-4. Also in `prepare.py`, you'll want to decrease `EVAL_TOKENS` so that your validation loss is evaluated on a lot less data.
-5. In `train.py`, the primary single knob that controls model complexity is the `DEPTH` (default 8, here). A lot of variables are just functions of this, so e.g. lower it down to e.g. 4.
-6. You'll want to most likely use `WINDOW_PATTERN` of just "L", because "SSSL" uses alternating banded attention pattern that may be very inefficient for you. Try it.
-7. You'll want to lower `TOTAL_BATCH_SIZE` a lot, but keep it powers of 2, e.g. down to `2**14` (~16K) or so even, hard to tell.
-
-I think these would be the reasonable hyperparameters to play with. Ask your favorite coding agent for help and copy paste them this guide, as well as the full source code.
-
-## Notable forks
-
-- [miolini/autoresearch-macos](https://github.com/miolini/autoresearch-macos) (MacOS)
-- [trevin-creator/autoresearch-mlx](https://github.com/trevin-creator/autoresearch-mlx) (MacOS)
-- [jsegov/autoresearch-win-rtx](https://github.com/jsegov/autoresearch-win-rtx) (Windows)
-
-## License
-
-MIT
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.

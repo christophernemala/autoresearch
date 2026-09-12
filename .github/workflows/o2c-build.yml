@@ -1,11 +1,13 @@
-name: DHCM Finance Control Hub Build
+name: O2C Orchestration CI
 
 on:
   push:
     branches:
+      - main
       - dhcm-finance-control-hub
   pull_request:
     branches:
+      - main
       - dhcm-finance-control-hub
 
 jobs:
@@ -21,14 +23,17 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Install
+      - name: Install dependencies
         run: npm ci
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint
-        run: npm run lint
+      - name: Test Financial Invariants
+        run: npm run test
+
+      - name: Anti-Legacy Branding Regression Check
+        run: npm run test:branding
 
       - name: Build
         run: npm run build

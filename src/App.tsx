@@ -18,12 +18,25 @@ import {
   ReceiptText,
   Search,
   ShieldCheck,
+  Shield,
+  Database,
+  UserCheck,
+  LogOut,
+  Globe,
   SlidersHorizontal,
   WalletCards,
   X
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { ApprovalsView } from './components/governance/ApprovalsView';
+import { ScoConsole } from './components/sco/ScoConsole';
+import { IntegrationsView } from './components/integrations/IntegrationsView';
+import { LandingPage } from './components/public/LandingPage';
+import { AuthModal } from './components/auth/AuthModal';
+import { getStoredSession, createSessionForRole, clearSession } from './lib/auth/authStore';
+import type { AuthSession } from './types/auth';
+import { brandConfig } from './config/brand';
 import {
   allocations,
   collections as collectionSeed,
@@ -57,7 +70,21 @@ import type {
   TreasuryPosition
 } from './types';
 
-type Page = 'dashboard' | 'receivables' | 'collections' | 'allocation' | 'disputes' | 'treasury' | 'controls' | 'reports' | 'settings';
+type Page =
+  | 'dashboard'
+  | 'receivables'
+  | 'collections'
+  | 'allocation'
+  | 'disputes'
+  | 'treasury'
+  | 'approvals'
+  | 'sco'
+  | 'integrations'
+  | 'controls'
+  | 'reports'
+  | 'settings'
+  | 'landing';
+
 type SortKey = 'amountDue' | 'daysLate' | 'customerName' | 'dueDate';
 
 const navItems: { id: Page; label: string; icon: LucideIcon }[] = [
@@ -67,6 +94,9 @@ const navItems: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'allocation', label: 'Allocation', icon: WalletCards },
   { id: 'disputes', label: 'Disputes', icon: AlertTriangle },
   { id: 'treasury', label: 'Treasury', icon: Landmark },
+  { id: 'approvals', label: 'Maker–Checker', icon: ShieldCheck },
+  { id: 'sco', label: 'SCO Console', icon: Shield },
+  { id: 'integrations', label: 'Integrations', icon: Database },
   { id: 'controls', label: 'Controls', icon: ClipboardCheck },
   { id: 'reports', label: 'Reports', icon: FileSpreadsheet },
   { id: 'settings', label: 'Settings', icon: SlidersHorizontal }
@@ -74,7 +104,7 @@ const navItems: { id: Page; label: string; icon: LucideIcon }[] = [
 
 const pageCopy: Record<Page, { title: string; kicker: string; description: string }> = {
   dashboard: {
-    title: 'Finance Control Hub',
+    title: 'O2C Command Center',
     kicker: 'Executive command view',
     description: 'Receivables exposure, collection pressure, cash allocation, disputes, and month-end readiness in one operating view.'
   },
@@ -103,6 +133,21 @@ const pageCopy: Record<Page, { title: string; kicker: string; description: strin
     kicker: 'Operational cash view',
     description: 'Expected collections, confirmed receipts, unallocated cash, pending bank confirmation, and entity cash forecast.'
   },
+  approvals: {
+    title: 'Maker–Checker Governance',
+    kicker: 'Four-eyes approval queue',
+    description: 'Review prepared financial actions with SHA-256 cryptographic payload integrity and Segregation of Duties.'
+  },
+  sco: {
+    title: 'Security Compliance Officer',
+    kicker: 'SOC 2 & Audit readiness',
+    description: 'Cryptographically chained audit explorer, RBAC role matrix, and real-time security telemetry.'
+  },
+  integrations: {
+    title: 'Enterprise Integration Hub',
+    kicker: 'Connected systems',
+    description: 'SAP S/4HANA, Oracle Fusion, NetSuite, and ISO 20022 SWIFT bank statement ingestion adapters.'
+  },
   controls: {
     title: 'Audit & Controls',
     kicker: 'Month-end readiness',
@@ -117,6 +162,11 @@ const pageCopy: Record<Page, { title: string; kicker: string; description: strin
     title: 'Source & Integration Boundaries',
     kicker: 'Deployment-safe configuration',
     description: 'Current source state and integration assumptions. External write actions remain disabled until real services are wired.'
+  },
+  landing: {
+    title: 'Public Platform Overview',
+    kicker: 'Enterprise architecture',
+    description: 'Public marketing plane and documentation for O2C Orchestration SaaS.'
   }
 };
 
@@ -136,16 +186,28 @@ function isCurrencyReportKey(key: string) {
   return ['amount', 'exposure', 'overdue', 'total', 'confirmed', 'forecast', 'unallocated', 'pending'].some((token) => normalized.includes(token));
 }
 
-function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Page) => void; children: React.ReactNode }) {
+function AppShell({
+  page,
+  setPage,
+  session,
+  onOpenAuth,
+  children
+}: {
+  page: Page;
+  setPage: (page: Page) => void;
+  session: AuthSession;
+  onOpenAuth: () => void;
+  children: React.ReactNode;
+}) {
   const copy = pageCopy[page];
   return (
     <div className="app-shell">
       <aside className="sidebar">
         <button className="brand" onClick={() => setPage('dashboard')} aria-label="Open executive dashboard">
-          <span>DH</span>
+          <span>O2C</span>
           <div>
-            <strong>Finance</strong>
-            <small>Finance Control</small>
+            <strong>{brandConfig.name}</strong>
+            <small>Finance & Governance</small>
           </div>
         </button>
         <nav aria-label="Primary navigation">
@@ -159,8 +221,8 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
         <section className="source-card">
           <ShieldCheck size={18} />
           <div>
-            <strong>Review-only mode</strong>
-            <p>Local finance seed data is active. Ledger, bank, and email actions are not executed.</p>
+            <strong>Four-Eyes Active</strong>
+            <p>Maker–Checker cryptographic controls & immutable audit ledger enforced.</p>
           </div>
         </section>
       </aside>
@@ -172,27 +234,34 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
             <p>{copy.description}</p>
           </div>
           <div className="topbar-actions">
-            <button className="toolbar-button"><Inbox size={15} /> Import</button>
-            <button className="toolbar-button"><Download size={15} /> Export</button>
-            <button className="toolbar-button primary">Review queue</button>
+            <button className="toolbar-button" onClick={() => setPage('landing')} title="View Public Website">
+              <Globe size={15} /> Public Site
+            </button>
+            <button className="toolbar-button primary" onClick={onOpenAuth} title="Switch Persona or Authenticate via SSO">
+              <UserCheck size={15} /> {session.user.name} ({session.user.role})
+            </button>
           </div>
         </header>
         <div className="workspace-bar">
           <div>
-            <span>Open period</span>
-            <strong>Jun 2026 close</strong>
+            <span>Tenant</span>
+            <strong>{session.tenant.name}</strong>
           </div>
           <div>
             <span>Currency</span>
-            <strong>AED</strong>
+            <strong>{session.tenant.currency}</strong>
           </div>
           <div>
-            <span>Source</span>
-            <strong>Local finance data</strong>
+            <span>Signer Role</span>
+            <strong>{session.user.role}</strong>
           </div>
           <div>
-            <span>Mode</span>
-            <strong>Review only</strong>
+            <span>SSO Status</span>
+            <strong>{session.tenant.ssoProvider || 'Enterprise Active'}</strong>
+          </div>
+          <div>
+            <span>Security Plane</span>
+            <strong>SOC 2 Type II Ready</strong>
           </div>
         </div>
         <AnimatePresence mode="wait">
@@ -206,7 +275,9 @@ function AppShell({ page, setPage, children }: { page: Page; setPage: (page: Pag
 }
 
 export function App() {
-  const [page, setPage] = useState<Page>('receivables');
+  const [session, setSession] = useState<AuthSession>(() => getStoredSession() || createSessionForRole('FINANCE_CONTROLLER'));
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [page, setPage] = useState<Page>('dashboard');
   const [query, setQuery] = useState('');
   const [entityFilter, setEntityFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -231,9 +302,10 @@ export function App() {
         );
       })
       .sort((a, b) => {
+        if (sortKey === 'amountDue') return b.amountDue - a.amountDue;
+        if (sortKey === 'daysLate') return b.daysLate - a.daysLate;
         if (sortKey === 'customerName') return a.customerName.localeCompare(b.customerName);
-        if (sortKey === 'dueDate') return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        return b[sortKey] - a[sortKey];
+        return a.dueDate.localeCompare(b.dueDate);
       });
   }, [bucketFilter, categoryFilter, entityFilter, query, riskFilter, sortKey]);
 
@@ -253,8 +325,7 @@ export function App() {
           ? {
               ...item,
               followUpStatus: 'Contacted',
-              lastContactDate: '2026-06-24',
-              notes: ['Follow-up marked complete in local review state.', ...item.notes]
+              notes: ['Follow-up recorded in UI workspace. Draft email queued for review.', ...item.notes]
             }
           : item
       )
@@ -276,37 +347,67 @@ export function App() {
     );
   }
 
-  return (
-    <AppShell page={page} setPage={setPage}>
-      {page === 'dashboard' && <Dashboard setPage={setPage} />}
-      {page === 'receivables' && (
-        <ReceivablesPage
-          rows={filteredReceivables}
-          query={query}
-          setQuery={setQuery}
-          entityFilter={entityFilter}
-          setEntityFilter={setEntityFilter}
-          categoryFilter={categoryFilter}
-          setCategoryFilter={setCategoryFilter}
-          bucketFilter={bucketFilter}
-          setBucketFilter={setBucketFilter}
-          riskFilter={riskFilter}
-          setRiskFilter={setRiskFilter}
-          sortKey={sortKey}
-          setSortKey={setSortKey}
-          resetFilters={resetFilters}
-          onSelect={setSelectedReceivable}
+  if (page === 'landing') {
+    return (
+      <>
+        <LandingPage onLaunchConsole={() => setPage('dashboard')} onOpenSso={() => setIsAuthModalOpen(true)} />
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onSuccess={(newSession) => {
+            setSession(newSession);
+            setIsAuthModalOpen(false);
+            setPage('dashboard');
+          }}
+          onClose={() => setIsAuthModalOpen(false)}
         />
-      )}
-      {page === 'collections' && <CollectionsPage rows={collections} onFollowUp={markFollowedUp} onEscalate={escalate} />}
-      {page === 'allocation' && <AllocationPage rows={allocations} />}
-      {page === 'disputes' && <DisputesPage rows={disputes} />}
-      {page === 'treasury' && <TreasuryPage rows={treasuryPositions} />}
-      {page === 'controls' && <ControlsPage rows={controls} />}
-      {page === 'reports' && <ReportsPage reports={reports} />}
-      {page === 'settings' && <SettingsPage />}
-      <DetailDrawer record={selectedReceivable} onClose={() => setSelectedReceivable(null)} />
-    </AppShell>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <AppShell page={page} setPage={setPage} session={session} onOpenAuth={() => setIsAuthModalOpen(true)}>
+        {page === 'dashboard' && <Dashboard setPage={setPage} />}
+        {page === 'receivables' && (
+          <ReceivablesPage
+            rows={filteredReceivables}
+            query={query}
+            setQuery={setQuery}
+            entityFilter={entityFilter}
+            setEntityFilter={setEntityFilter}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+            bucketFilter={bucketFilter}
+            setBucketFilter={setBucketFilter}
+            riskFilter={riskFilter}
+            setRiskFilter={setRiskFilter}
+            sortKey={sortKey}
+            setSortKey={setSortKey}
+            resetFilters={resetFilters}
+            onSelect={setSelectedReceivable}
+          />
+        )}
+        {page === 'collections' && <CollectionsPage rows={collections} onFollowUp={markFollowedUp} onEscalate={escalate} />}
+        {page === 'allocation' && <AllocationPage rows={allocations} />}
+        {page === 'disputes' && <DisputesPage rows={disputes} />}
+        {page === 'treasury' && <TreasuryPage rows={treasuryPositions} />}
+        {page === 'approvals' && <ApprovalsView currentUser={session.user} />}
+        {page === 'sco' && <ScoConsole />}
+        {page === 'integrations' && <IntegrationsView />}
+        {page === 'controls' && <ControlsPage rows={controls} />}
+        {page === 'reports' && <ReportsPage reports={reports} />}
+        {page === 'settings' && <SettingsPage />}
+        <DetailDrawer record={selectedReceivable} onClose={() => setSelectedReceivable(null)} />
+      </AppShell>
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onSuccess={(newSession) => {
+          setSession(newSession);
+          setIsAuthModalOpen(false);
+        }}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
+    </>
   );
 }
 

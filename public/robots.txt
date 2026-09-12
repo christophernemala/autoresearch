@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Allow: /features
+Allow: /security
+Allow: /integrations
+Allow: /docs
+
+# Disallow authenticated financial and compliance routes
+Disallow: /app/
+Disallow: /api/
+Disallow: /sco/
+Disallow: /settings/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://o2c-orchestration.vercel.app/sitemap.xml
